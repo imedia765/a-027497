@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
-import { Collector } from '@/types/collector';
+import { Database } from '@/integrations/supabase/types';
+
+type Collector = Database['public']['Tables']['collectors']['Row'];
 
 const CollectorsList = () => {
   const { data: collectors, isLoading, error } = useQuery({
