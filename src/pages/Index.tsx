@@ -1,13 +1,14 @@
-import { ShoppingCart, Smartphone, Box, UserPlus, Key, Bell, Globe, Shield, Moon } from 'lucide-react';
-import MetricCard from '@/components/MetricCard';
-import MonthlyChart from '@/components/MonthlyChart';
-import CustomerRequests from '@/components/CustomerRequests';
-import SidePanel from '@/components/SidePanel';
-import { useState } from 'react';
-import { Switch } from "@/components/ui/switch";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from '@/integrations/supabase/types';
+import MetricCard from '@/components/MetricCard';
+import MonthlyChart from '@/components/MonthlyChart';
+import CustomerRequests from '@/components/CustomerRequests';
+import CollectorsList from '@/components/CollectorsList';
+import SidePanel from '@/components/SidePanel';
+import { useState } from 'react';
+import { Switch } from "@/components/ui/switch";
+import { Bell, Globe } from 'lucide-react';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -28,42 +29,6 @@ const Index = () => {
       }
       console.log('Fetched members:', data);
       return data as Tables<'members'>[];
-    },
-  });
-
-  // Updated query to get collectors from members table
-  const { data: collectors, isLoading: collectorsLoading, error: collectorsError } = useQuery({
-    queryKey: ['collectors'],
-    queryFn: async () => {
-      console.log('Fetching collectors...');
-      const { data, error } = await supabase
-        .from('members')
-        .select('*')
-        .eq('role', 'collector')
-        .throwOnError();
-      
-      if (error) {
-        console.error('Error fetching collectors:', error);
-        throw error;
-      }
-
-      // Get member count for each collector
-      const collectorsWithCounts = await Promise.all(
-        (data || []).map(async (collector) => {
-          const { count } = await supabase
-            .from('members')
-            .select('*', { count: 'exact', head: true })
-            .eq('collector_id', collector.id);
-          
-          return {
-            ...collector,
-            member_count: count || 0
-          };
-        })
-      );
-
-      console.log('Fetched collectors with counts:', collectorsWithCounts);
-      return collectorsWithCounts;
     },
   });
 
@@ -160,41 +125,7 @@ const Index = () => {
               <h1 className="text-3xl font-medium mb-2">Collectors</h1>
               <p className="text-dashboard-muted">View all collectors and their assigned members</p>
             </header>
-            <div className="space-y-4">
-              {collectorsLoading ? (
-                <div className="text-center py-4">Loading collectors...</div>
-              ) : collectorsError ? (
-                <div className="text-center py-4 text-red-500">Error loading collectors: {collectorsError.message}</div>
-              ) : collectors && collectors.length > 0 ? (
-                <div className="grid gap-4">
-                  {collectors.map((collector) => (
-                    <div 
-                      key={collector.id} 
-                      className="bg-dashboard-card p-4 rounded-lg border border-white/10 hover:border-white/20 transition-all duration-300"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white">
-                            {collector.full_name?.charAt(0) || 'C'}
-                          </div>
-                          <div>
-                            <p className="font-medium text-white">{collector.full_name}</p>
-                            <p className="text-sm text-dashboard-text">ID: {collector.id}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-400">
-                            {collector.member_count} members
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-4">No collectors found</div>
-              )}
-            </div>
+            <CollectorsList />
           </>
         );
       case 'settings':
