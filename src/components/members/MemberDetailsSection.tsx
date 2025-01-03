@@ -1,4 +1,4 @@
-import { Shield } from "lucide-react";
+import { Shield, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,16 +21,21 @@ const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) =
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentRole, setCurrentRole] = useState<AppRole | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchCurrentRole = async () => {
       if (!member.auth_user_id) {
-        console.log('No auth_user_id provided for member');
+        console.log('No auth_user_id provided for member:', member);
+        setIsLoading(false);
         return;
       }
 
       try {
         console.log('Fetching role for user:', member.auth_user_id);
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        console.log('Current auth user:', userData);
+
         const { data, error } = await supabase
           .from('user_roles')
           .select('role')
@@ -40,6 +45,7 @@ const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) =
         if (error) {
           console.error('Error fetching role:', error);
           setError(`Failed to fetch role: ${error.message}`);
+          setIsLoading(false);
           return;
         }
 
@@ -54,6 +60,8 @@ const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) =
       } catch (error) {
         console.error('Error in fetchCurrentRole:', error);
         setError('An unexpected error occurred while fetching the role');
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -129,7 +137,12 @@ const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) =
         </div>
         <div>
           <p className="text-dashboard-muted mb-1">Role</p>
-          {userRole === 'admin' && member.auth_user_id ? (
+          {isLoading ? (
+            <div className="flex items-center gap-2 text-dashboard-muted">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading...
+            </div>
+          ) : userRole === 'admin' && member.auth_user_id ? (
             <div className="space-y-2">
               <Select 
                 onValueChange={(value) => handleRoleChange(member.auth_user_id!, value as AppRole)}
