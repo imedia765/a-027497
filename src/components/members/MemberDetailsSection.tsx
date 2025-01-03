@@ -2,6 +2,8 @@ import { Shield } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type AppRole = 'admin' | 'collector' | 'member';
 
@@ -16,16 +18,17 @@ interface MemberDetailsSectionProps {
 
 const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) => {
   const { toast } = useToast();
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleRoleChange = async (userId: string, newRole: AppRole) => {
     if (!userId) {
-      toast({
-        title: "Error",
-        description: "User not found",
-        variant: "destructive",
-      });
+      setError("User ID is required to update role");
       return;
     }
+
+    setIsUpdating(true);
+    setError(null);
 
     try {
       console.log('Updating role for user:', userId, 'to:', newRole);
@@ -56,15 +59,18 @@ const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) =
 
       toast({
         title: "Success",
-        description: `Role updated to ${newRole}`,
+        description: `Role successfully updated to ${newRole}`,
       });
     } catch (error) {
       console.error('Error updating role:', error);
+      setError(error instanceof Error ? error.message : "Failed to update role");
       toast({
         title: "Error",
-        description: "Failed to update role",
+        description: "Failed to update role. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -82,31 +88,48 @@ const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) =
         <div>
           <p className="text-dashboard-muted mb-1">Role</p>
           {userRole === 'admin' && member.auth_user_id ? (
-            <Select onValueChange={(value) => handleRoleChange(member.auth_user_id!, value as AppRole)}>
-              <SelectTrigger className="w-[140px] h-8 bg-dashboard-accent1/10 border-dashboard-accent1/20">
-                <SelectValue placeholder="Change Role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="admin">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-4 h-4" />
-                    Admin
-                  </div>
-                </SelectItem>
-                <SelectItem value="collector">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-4 h-4" />
-                    Collector
-                  </div>
-                </SelectItem>
-                <SelectItem value="member">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-4 h-4" />
-                    Member
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <Select 
+                onValueChange={(value) => handleRoleChange(member.auth_user_id!, value as AppRole)}
+                disabled={isUpdating}
+              >
+                <SelectTrigger 
+                  className={`w-[140px] h-8 ${
+                    isUpdating 
+                      ? 'bg-dashboard-accent1/5 border-dashboard-accent1/10' 
+                      : 'bg-dashboard-accent1/10 border-dashboard-accent1/20'
+                  }`}
+                >
+                  <SelectValue placeholder={isUpdating ? "Updating..." : "Change Role"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4" />
+                      Admin
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="collector">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4" />
+                      Collector
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="member">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4" />
+                      Member
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {error && (
+                <Alert variant="destructive" className="mt-2">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+            </div>
           ) : (
             <p className="text-dashboard-text">Member</p>
           )}
