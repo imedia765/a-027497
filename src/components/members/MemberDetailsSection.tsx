@@ -17,8 +17,8 @@ interface MemberDetailsSectionProps {
 const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) => {
   const { toast } = useToast();
 
-  const handleRoleChange = async (memberId: string, newRole: AppRole) => {
-    if (!memberId) {
+  const handleRoleChange = async (userId: string, newRole: AppRole) => {
+    if (!userId) {
       toast({
         title: "Error",
         description: "User not found",
@@ -28,23 +28,31 @@ const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) =
     }
 
     try {
-      // First, delete existing role
+      console.log('Updating role for user:', userId, 'to:', newRole);
+      
+      // First, delete existing role if any
       const { error: deleteError } = await supabase
         .from('user_roles')
         .delete()
-        .eq('user_id', memberId);
+        .eq('user_id', userId);
 
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        console.error('Error deleting existing role:', deleteError);
+        throw deleteError;
+      }
 
       // Then insert new role
       const { error: insertError } = await supabase
         .from('user_roles')
         .insert({
-          user_id: memberId,
+          user_id: userId,
           role: newRole
         });
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Error inserting new role:', insertError);
+        throw insertError;
+      }
 
       toast({
         title: "Success",
