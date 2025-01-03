@@ -2,7 +2,7 @@ import { Shield } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type AppRole = 'admin' | 'collector' | 'member';
@@ -20,6 +20,36 @@ const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) =
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentRole, setCurrentRole] = useState<AppRole | null>(null);
+
+  useEffect(() => {
+    const fetchCurrentRole = async () => {
+      if (!member.auth_user_id) return;
+
+      try {
+        console.log('Fetching role for user:', member.auth_user_id);
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', member.auth_user_id)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error fetching role:', error);
+          return;
+        }
+
+        console.log('Current role data:', data);
+        if (data) {
+          setCurrentRole(data.role as AppRole);
+        }
+      } catch (error) {
+        console.error('Error in fetchCurrentRole:', error);
+      }
+    };
+
+    fetchCurrentRole();
+  }, [member.auth_user_id]);
 
   const handleRoleChange = async (userId: string, newRole: AppRole) => {
     if (!userId) {
@@ -57,6 +87,7 @@ const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) =
         throw insertError;
       }
 
+      setCurrentRole(newRole);
       toast({
         title: "Success",
         description: `Role successfully updated to ${newRole}`,
@@ -92,6 +123,7 @@ const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) =
               <Select 
                 onValueChange={(value) => handleRoleChange(member.auth_user_id!, value as AppRole)}
                 disabled={isUpdating}
+                value={currentRole || undefined}
               >
                 <SelectTrigger 
                   className={`w-[140px] h-8 ${
@@ -100,7 +132,7 @@ const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) =
                       : 'bg-dashboard-accent1/10 border-dashboard-accent1/20'
                   }`}
                 >
-                  <SelectValue placeholder={isUpdating ? "Updating..." : "Change Role"} />
+                  <SelectValue placeholder={isUpdating ? "Updating..." : (currentRole || "Select Role")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">
@@ -131,7 +163,7 @@ const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) =
               )}
             </div>
           ) : (
-            <p className="text-dashboard-text">Member</p>
+            <p className="text-dashboard-text">{currentRole || 'Member'}</p>
           )}
         </div>
       </div>
