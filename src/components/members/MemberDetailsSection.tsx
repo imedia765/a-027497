@@ -24,7 +24,10 @@ const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) =
 
   useEffect(() => {
     const fetchCurrentRole = async () => {
-      if (!member.auth_user_id) return;
+      if (!member.auth_user_id) {
+        console.log('No auth_user_id provided for member');
+        return;
+      }
 
       try {
         console.log('Fetching role for user:', member.auth_user_id);
@@ -36,15 +39,21 @@ const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) =
 
         if (error) {
           console.error('Error fetching role:', error);
+          setError(`Failed to fetch role: ${error.message}`);
           return;
         }
 
         console.log('Current role data:', data);
         if (data) {
           setCurrentRole(data.role as AppRole);
+          console.log('Role set to:', data.role);
+        } else {
+          console.log('No role found for user, defaulting to member');
+          setCurrentRole('member');
         }
       } catch (error) {
         console.error('Error in fetchCurrentRole:', error);
+        setError('An unexpected error occurred while fetching the role');
       }
     };
 
@@ -53,6 +62,7 @@ const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) =
 
   const handleRoleChange = async (userId: string, newRole: AppRole) => {
     if (!userId) {
+      console.error('No user ID provided');
       setError("User ID is required to update role");
       return;
     }
@@ -87,6 +97,7 @@ const MemberDetailsSection = ({ member, userRole }: MemberDetailsSectionProps) =
         throw insertError;
       }
 
+      console.log('Role successfully updated to:', newRole);
       setCurrentRole(newRole);
       toast({
         title: "Success",
