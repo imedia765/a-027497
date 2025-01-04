@@ -31,40 +31,47 @@ export const useRoleAccess = () => {
         .maybeSingle();
 
       if (roleError) {
-        console.error('Error fetching role in central hook:', roleError);
-        // Don't throw error, try fallback methods
+        console.error('Error fetching role from user_roles:', roleError);
       }
 
       if (roleData?.role) {
-        console.log('Fetched role from central hook:', roleData.role);
+        console.log('Found role in user_roles table:', roleData.role);
         return roleData.role as UserRole;
       }
 
-      // Check JWT token metadata for role
-      const metadataRole = session.user.user_metadata?.role;
-      if (metadataRole && ['admin', 'collector', 'member'].includes(metadataRole)) {
-        console.log('Using role from JWT metadata:', metadataRole);
-        return metadataRole as UserRole;
+      // If no role in user_roles table, check if user is a collector
+      const { data: collectorData, error: collectorError } = await supabase
+        .from('members_collectors')
+        .select('name')
+        .eq('member_profile_id', session.user.id)
+        .maybeSingle();
+
+      if (collectorError) {
+        console.error('Error checking collector status:', collectorError);
       }
 
-      // If no role found, check if user is a collector
+      if (collectorData?.name) {
+        console.log('User is a collector based on members_collectors table');
+        return 'collector' as UserRole;
+      }
+
+      // If still no role found, check if user exists in members table
       const { data: memberData, error: memberError } = await supabase
         .from('members')
-        .select('collector')
+        .select('id')
         .eq('auth_user_id', session.user.id)
         .maybeSingle();
 
       if (memberError) {
-        console.error('Error checking collector status:', memberError);
+        console.error('Error checking member status:', memberError);
+      }
+
+      if (memberData?.id) {
+        console.log('User is a regular member');
         return 'member' as UserRole;
       }
 
-      if (memberData?.collector) {
-        console.log('User is a collector');
-        return 'collector' as UserRole;
-      }
-
-      console.log('Defaulting to member role');
+      console.log('No role found, defaulting to member');
       return 'member' as UserRole;
     },
     staleTime: ROLE_STALE_TIME,
