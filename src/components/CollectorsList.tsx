@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from '@/integrations/supabase/types';
-import { UserCheck, Users } from 'lucide-react';
+import { UserCheck, Users, CreditCard } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -45,7 +45,9 @@ const CollectorsList = () => {
           phone,
           active,
           created_at,
-          updated_at
+          updated_at,
+          member_profile_id,
+          collector_profile_id
         `)
         .order('number', { ascending: true });
       
@@ -59,10 +61,18 @@ const CollectorsList = () => {
           .from('members')
           .select('*', { count: 'exact', head: true })
           .eq('collector', collector.name);
+
+        // Fetch the member number for this collector
+        const { data: memberData } = await supabase
+          .from('members')
+          .select('member_number')
+          .eq('id', collector.member_profile_id)
+          .single();
         
         return {
           ...collector,
-          memberCount: count || 0
+          memberCount: count || 0,
+          memberNumber: memberData?.member_number || null
         };
       }) || []);
 
@@ -119,6 +129,14 @@ const CollectorsList = () => {
                       <UserCheck className="w-4 h-4" />
                       <span>Collector</span>
                       <span className="text-purple-400">({collector.memberCount} members)</span>
+                      {collector.memberNumber ? (
+                        <span className="flex items-center gap-1 text-green-400">
+                          <CreditCard className="w-3 h-3" />
+                          Member #{collector.memberNumber}
+                        </span>
+                      ) : (
+                        <span className="text-yellow-400">No member number linked</span>
+                      )}
                     </div>
                   </div>
                 </div>
