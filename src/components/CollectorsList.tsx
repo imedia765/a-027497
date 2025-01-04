@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from '@/integrations/supabase/types';
-import { UserCheck, Users, CreditCard } from 'lucide-react';
+import { UserCheck, Users, CreditCard, Link2, AlertCircle } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -136,11 +136,14 @@ const CollectorsList = () => {
                       <span className="text-purple-400">({collector.memberCount} members)</span>
                       {collector.memberNumber ? (
                         <span className="flex items-center gap-1 text-green-400">
-                          <CreditCard className="w-3 h-3" />
+                          <Link2 className="w-3 h-3" />
                           Member #{collector.memberNumber}
                         </span>
                       ) : (
-                        <span className="text-yellow-400">No member number linked</span>
+                        <span className="flex items-center gap-1 text-yellow-400">
+                          <AlertCircle className="w-3 h-3" />
+                          No member number linked
+                        </span>
                       )}
                     </div>
                   </div>
