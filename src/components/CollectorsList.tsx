@@ -62,17 +62,22 @@ const CollectorsList = () => {
           .select('*', { count: 'exact', head: true })
           .eq('collector', collector.name);
 
-        // Fetch the member number for this collector
-        const { data: memberData } = await supabase
-          .from('members')
-          .select('member_number')
-          .eq('id', collector.member_profile_id)
-          .single();
+        // Only fetch member number if member_profile_id exists
+        let memberNumber = null;
+        if (collector.member_profile_id) {
+          const { data: memberData } = await supabase
+            .from('members')
+            .select('member_number')
+            .eq('id', collector.member_profile_id)
+            .maybeSingle();
+          
+          memberNumber = memberData?.member_number || null;
+        }
         
         return {
           ...collector,
           memberCount: count || 0,
-          memberNumber: memberData?.member_number || null
+          memberNumber
         };
       }) || []);
 
