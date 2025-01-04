@@ -4,7 +4,6 @@ import { Database } from '@/integrations/supabase/types';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import MemberDetailsSection from './members/MemberDetailsSection';
 
 type Member = Database['public']['Tables']['members']['Row'];
 
@@ -26,6 +25,7 @@ const MembersList = ({ searchTerm, userRole }: MembersListProps) => {
         query = query.or(`full_name.ilike.%${searchTerm}%,member_number.ilike.%${searchTerm}%,collector.ilike.%${searchTerm}%`);
       }
 
+      // If user is a collector, only show their assigned members
       if (userRole === 'collector') {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -104,7 +104,22 @@ const MembersList = ({ searchTerm, userRole }: MembersListProps) => {
                 </div>
               </div>
               
-              <MemberDetailsSection member={member} userRole={userRole} />
+              <div className="mt-4 pt-4 border-t border-white/10">
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-dashboard-muted mb-1">Membership Type</p>
+                    <p className="text-dashboard-text">{member.membership_type || 'Standard'}</p>
+                  </div>
+                  <div>
+                    <p className="text-dashboard-muted mb-1">Collector</p>
+                    <p className="text-dashboard-text">{member.collector || 'Not assigned'}</p>
+                  </div>
+                  <div>
+                    <p className="text-dashboard-muted mb-1">Status</p>
+                    <p className="text-dashboard-text">{member.status || 'Pending'}</p>
+                  </div>
+                </div>
+              </div>
             </AccordionContent>
           </AccordionItem>
         ))}

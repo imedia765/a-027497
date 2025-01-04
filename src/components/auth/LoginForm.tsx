@@ -4,12 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from '@tanstack/react-query';
 
 const LoginForm = () => {
   const [memberNumber, setMemberNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +85,7 @@ const LoginForm = () => {
           console.log('Signup successful, attempting final sign in');
           
           // Final sign in attempt after successful signup
-          const { error: finalSignInError } = await supabase.auth.signInWithPassword({
+          const { data: finalSignInData, error: finalSignInError } = await supabase.auth.signInWithPassword({
             email,
             password,
           });
@@ -92,10 +94,24 @@ const LoginForm = () => {
             console.error('Final sign in error:', finalSignInError);
             throw finalSignInError;
           }
+
+          // Verify session is established
+          if (!finalSignInData?.session) {
+            throw new Error('Failed to establish session');
+          }
         }
       } else if (signInError) {
         throw signInError;
       }
+
+      // Verify session after sign in
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Failed to establish session');
+      }
+
+      // Invalidate all queries to refresh data
+      await queryClient.invalidateQueries();
 
       toast({
         title: "Login successful",
@@ -105,6 +121,9 @@ const LoginForm = () => {
       navigate('/');
     } catch (error: any) {
       console.error('Login error:', error);
+      // Clear any existing session
+      await supabase.auth.signOut();
+      
       toast({
         title: "Login failed",
         description: error.message,

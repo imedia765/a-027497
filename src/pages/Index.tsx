@@ -7,6 +7,7 @@ import CollectorsList from '@/components/CollectorsList';
 import SidePanel from '@/components/SidePanel';
 import { useRoleAccess } from '@/hooks/useRoleAccess';
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from '@tanstack/react-query';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -14,6 +15,7 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { userRole, roleLoading, canAccessTab } = useRoleAccess();
+  const queryClient = useQueryClient();
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -23,6 +25,7 @@ const Index = () => {
   };
 
   const handleLogout = async () => {
+    await queryClient.invalidateQueries();
     await supabase.auth.signOut();
     navigate('/login');
   };
@@ -77,6 +80,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-dashboard-dark">
+      <div className="w-full bg-dashboard-card/50 py-4 text-center border-b border-white/10">
+        <p className="text-xl text-white font-arabic">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</p>
+        <p className="text-sm text-dashboard-text mt-1">In the name of Allah, the Most Gracious, the Most Merciful</p>
+      </div>
       <SidePanel onTabChange={setActiveTab} userRole={userRole} />
       <div className="pl-64">
         <div className="p-8">

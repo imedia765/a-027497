@@ -21,8 +21,9 @@ export const useRoleAccess = () => {
       }
 
       console.log('Session user in central role check:', session.user.id);
+      console.log('User metadata:', session.user.user_metadata);
 
-      // Check user_roles table directly
+      // First try to get role from user_roles table
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
@@ -31,17 +32,40 @@ export const useRoleAccess = () => {
 
       if (roleError) {
         console.error('Error fetching role in central hook:', roleError);
-        toast({
-          title: "Error fetching role",
-          description: roleError.message,
-          variant: "destructive",
-        });
-        throw roleError;
+        // Don't throw error, try fallback methods
       }
 
-      // If no role is found, default to 'member'
-      console.log('Fetched role from central hook:', roleData?.role);
-      return (roleData?.role as UserRole) || 'member';
+      if (roleData?.role) {
+        console.log('Fetched role from central hook:', roleData.role);
+        return roleData.role as UserRole;
+      }
+
+      // Check JWT token metadata for role
+      const metadataRole = session.user.user_metadata?.role;
+      if (metadataRole && ['admin', 'collector', 'member'].includes(metadataRole)) {
+        console.log('Using role from JWT metadata:', metadataRole);
+        return metadataRole as UserRole;
+      }
+
+      // If no role found, check if user is a collector
+      const { data: memberData, error: memberError } = await supabase
+        .from('members')
+        .select('collector')
+        .eq('auth_user_id', session.user.id)
+        .maybeSingle();
+
+      if (memberError) {
+        console.error('Error checking collector status:', memberError);
+        return 'member' as UserRole;
+      }
+
+      if (memberData?.collector) {
+        console.log('User is a collector');
+        return 'collector' as UserRole;
+      }
+
+      console.log('Defaulting to member role');
+      return 'member' as UserRole;
     },
     staleTime: ROLE_STALE_TIME,
     retry: 2,

@@ -9,6 +9,48 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      backup_history: {
+        Row: {
+          backup_file_name: string | null
+          collectors_count: number | null
+          error_message: string | null
+          id: string
+          members_count: number | null
+          operation_type: Database["public"]["Enums"]["backup_operation_type"]
+          performed_at: string | null
+          performed_by: string | null
+          policies_count: number | null
+          roles_count: number | null
+          status: string | null
+        }
+        Insert: {
+          backup_file_name?: string | null
+          collectors_count?: number | null
+          error_message?: string | null
+          id?: string
+          members_count?: number | null
+          operation_type: Database["public"]["Enums"]["backup_operation_type"]
+          performed_at?: string | null
+          performed_by?: string | null
+          policies_count?: number | null
+          roles_count?: number | null
+          status?: string | null
+        }
+        Update: {
+          backup_file_name?: string | null
+          collectors_count?: number | null
+          error_message?: string | null
+          id?: string
+          members_count?: number | null
+          operation_type?: Database["public"]["Enums"]["backup_operation_type"]
+          performed_at?: string | null
+          performed_by?: string | null
+          policies_count?: number | null
+          roles_count?: number | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       members: {
         Row: {
           address: string | null
@@ -171,7 +213,7 @@ export type Database = {
           {
             foreignKeyName: "members_collectors_member_profile_id_fkey"
             columns: ["member_profile_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "members"
             referencedColumns: ["id"]
           },
@@ -203,10 +245,39 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      assign_collector_role: {
+        Args: {
+          member_id: string
+          collector_name: string
+          collector_prefix: string
+          collector_number: string
+        }
+        Returns: string
+      }
+      generate_full_backup: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      is_admin: {
+        Args: {
+          user_uid: string
+        }
+        Returns: boolean
+      }
+      restore_from_backup: {
+        Args: {
+          backup_data: Json
+        }
+        Returns: string
+      }
+      update_collector_profiles: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "collector" | "member"
+      backup_operation_type: "backup" | "restore"
     }
     CompositeTypes: {
       [_ in never]: never
