@@ -1,30 +1,65 @@
-import { Routes, Route } from 'react-router-dom';
-import Login from './pages/Login';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Session } from '@supabase/supabase-js';
 import Index from './pages/Index';
+import Login from './pages/Login';
+import { Toaster } from "@/components/ui/toaster";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from '@tanstack/react-query';
 
 function App() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      console.log('Auth state changed:', _event, session?.user?.id);
+      setSession(session);
+      
+      if (!session) {
+        // Clear all queries when logging out
+        await queryClient.resetQueries();
+      } else {
+        // Refresh queries when logging in
+        await queryClient.invalidateQueries();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [queryClient]);
+
+  if (loading) {
+    return null; // Or a loading spinner
+  }
+
   return (
-    <div className="min-h-screen bg-dashboard-dark flex flex-col">
-      {/* Global Header */}
-      <div className="w-full bg-dashboard-card/50 py-4 text-center border-b border-white/10 sticky top-0 z-50">
-        <p className="text-xl text-white font-arabic">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</p>
-        <p className="text-sm text-dashboard-text mt-1">In the name of Allah, the Most Gracious, the Most Merciful</p>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-grow">
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/*" element={<Index />} />
-        </Routes>
-      </div>
-
-      {/* Global Footer */}
-      <footer className="text-center text-dashboard-muted text-sm py-8 border-t border-white/10 bg-dashboard-card/50">
-        <p>© 2024 SmartFIX Tech, Burton Upon Trent. All rights reserved.</p>
-        <p className="mt-2">Website created and coded by Zaheer Asghar</p>
-      </footer>
-    </div>
+    <Router>
+      <Routes>
+        <Route 
+          path="/login" 
+          element={
+            session ? <Navigate to="/" replace /> : <Login />
+          } 
+        />
+        <Route 
+          path="/" 
+          element={
+            session ? <Index /> : <Navigate to="/login" replace />
+          } 
+        />
+      </Routes>
+      <Toaster />
+    </Router>
   );
 }
 

@@ -63,10 +63,6 @@ export type Database = {
           created_by: string | null
           date_of_birth: string | null
           email: string | null
-          emergency_collection_amount: number | null
-          emergency_collection_created_at: string | null
-          emergency_collection_due_date: string | null
-          emergency_collection_status: string | null
           family_member_dob: string | null
           family_member_gender: string | null
           family_member_name: string | null
@@ -91,9 +87,6 @@ export type Database = {
           town: string | null
           updated_at: string
           verified: boolean | null
-          yearly_payment_amount: number | null
-          yearly_payment_due_date: string | null
-          yearly_payment_status: string | null
         }
         Insert: {
           address?: string | null
@@ -106,10 +99,6 @@ export type Database = {
           created_by?: string | null
           date_of_birth?: string | null
           email?: string | null
-          emergency_collection_amount?: number | null
-          emergency_collection_created_at?: string | null
-          emergency_collection_due_date?: string | null
-          emergency_collection_status?: string | null
           family_member_dob?: string | null
           family_member_gender?: string | null
           family_member_name?: string | null
@@ -134,9 +123,6 @@ export type Database = {
           town?: string | null
           updated_at?: string
           verified?: boolean | null
-          yearly_payment_amount?: number | null
-          yearly_payment_due_date?: string | null
-          yearly_payment_status?: string | null
         }
         Update: {
           address?: string | null
@@ -149,10 +135,6 @@ export type Database = {
           created_by?: string | null
           date_of_birth?: string | null
           email?: string | null
-          emergency_collection_amount?: number | null
-          emergency_collection_created_at?: string | null
-          emergency_collection_due_date?: string | null
-          emergency_collection_status?: string | null
           family_member_dob?: string | null
           family_member_gender?: string | null
           family_member_name?: string | null
@@ -177,19 +159,17 @@ export type Database = {
           town?: string | null
           updated_at?: string
           verified?: boolean | null
-          yearly_payment_amount?: number | null
-          yearly_payment_due_date?: string | null
-          yearly_payment_status?: string | null
         }
         Relationships: []
       }
       members_collectors: {
         Row: {
           active: boolean | null
+          collector_profile_id: string | null
           created_at: string
           email: string | null
           id: string
-          member_number: string | null
+          member_profile_id: string | null
           name: string | null
           number: string | null
           phone: string | null
@@ -198,10 +178,11 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
+          collector_profile_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
-          member_number?: string | null
+          member_profile_id?: string | null
           name?: string | null
           number?: string | null
           phone?: string | null
@@ -210,17 +191,33 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
+          collector_profile_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
-          member_number?: string | null
+          member_profile_id?: string | null
           name?: string | null
           number?: string | null
           phone?: string | null
           prefix?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "members_collectors_collector_profile_id_fkey"
+            columns: ["collector_profile_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "members_collectors_member_profile_id_fkey"
+            columns: ["member_profile_id"]
+            isOneToOne: true
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -261,37 +258,11 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
-      get_rls_policies: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          table_name: string
-          name: string
-          command: string
-        }[]
-      }
-      get_tables_info: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          name: string
-          columns: Json
-          rls_enabled: boolean
-        }[]
-      }
       is_admin: {
         Args: {
           user_uid: string
         }
         Returns: boolean
-      }
-      is_payment_overdue: {
-        Args: {
-          due_date: string
-        }
-        Returns: boolean
-      }
-      perform_user_roles_sync: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
       }
       restore_from_backup: {
         Args: {

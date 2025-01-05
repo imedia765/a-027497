@@ -7,36 +7,22 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 type Member = Database['public']['Tables']['members']['Row'];
 
 const CollectorMembers = ({ collectorName }: { collectorName: string }) => {
-  const { data: members, isLoading, error } = useQuery({
+  const { data: members, isLoading } = useQuery({
     queryKey: ['collector_members', collectorName],
     queryFn: async () => {
-      console.log('Fetching members for collector:', collectorName);
+      const { data, error } = await supabase
+        .from('members')
+        .select('*')
+        .eq('collector', collectorName)
+        .order('created_at', { ascending: false });
       
-      try {
-        const { data, error } = await supabase
-          .from('members')
-          .select('*')
-          .eq('collector', encodeURIComponent(collectorName))
-          .order('created_at', { ascending: false });
-        
-        if (error) {
-          console.error('Supabase error:', error);
-          throw error;
-        }
-
-        console.log('Fetched members:', data?.length || 0);
-        return data as Member[];
-      } catch (error) {
-        console.error('Error fetching members:', error);
-        throw error;
-      }
+      if (error) throw error;
+      return data as Member[];
     },
-    retry: 1,
   });
 
   if (isLoading) return <div>Loading members...</div>;
-  if (error) return <div>Error loading members: {(error as Error).message}</div>;
-  if (!members?.length) return <div>No members found for {collectorName}</div>;
+  if (!members?.length) return null;
 
   return (
     <ScrollArea className="h-[400px] w-full rounded-md">

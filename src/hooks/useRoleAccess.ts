@@ -1,12 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-export type UserRole = 'admin' | 'collector' | 'member' | null;
+export type UserRole = 'member' | 'collector' | 'admin' | null;
 
 const ROLE_STALE_TIME = 1000 * 60 * 5; // 5 minutes
 
 export const useRoleAccess = () => {
-  const { data: userRole = null, isLoading: roleLoading, error } = useQuery({
+  const { toast } = useToast();
+
+  const { data: userRole, isLoading: roleLoading, error } = useQuery({
     queryKey: ['userRole'],
     queryFn: async () => {
       console.log('Fetching user role from central hook...');
@@ -18,58 +21,64 @@ export const useRoleAccess = () => {
       }
 
       console.log('Session user in central role check:', session.user.id);
+      console.log('User metadata:', session.user.user_metadata);
 
-      try {
-        // First check user_roles table
-        const { data: userRoles, error: rolesError } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id);
+      // First try to get role from user_roles table
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
 
-        if (rolesError) {
-          console.error('Error fetching user roles:', rolesError);
-          throw rolesError;
-        }
-
-        // If no roles found, check if user is a member and assign role
-        if (!userRoles || userRoles.length === 0) {
-          console.log('No roles found, checking member status');
-          const { data: memberData } = await supabase
-            .from('members')
-            .select('id')
-            .eq('auth_user_id', session.user.id)
-            .maybeSingle();
-
-          if (memberData) {
-            console.log('User is a member, adding member role');
-            const { error: insertError } = await supabase
-              .from('user_roles')
-              .insert({ user_id: session.user.id, role: 'member' });
-
-            if (insertError) {
-              console.error('Error adding member role:', insertError);
-              throw insertError;
-            }
-
-            return 'member' as UserRole;
-          }
-        } else {
-          // Return the highest priority role if multiple exist
-          if (userRoles.some(r => r.role === 'admin')) return 'admin' as UserRole;
-          if (userRoles.some(r => r.role === 'collector')) return 'collector' as UserRole;
-          if (userRoles.some(r => r.role === 'member')) return 'member' as UserRole;
-        }
-
-        console.log('No valid role found for user');
-        return null;
-
-      } catch (error) {
-        console.error('Error determining user role:', error);
-        throw error;
+      if (roleError) {
+        console.error('Error fetching role from user_roles:', roleError);
       }
+
+      if (roleData?.role) {
+        console.log('Found role in user_roles table:', roleData.role);
+        return roleData.role as UserRole;
+      }
+
+      // If no role in user_roles table, check if user is a collector
+      const { data: collectorData, error: collectorError } = await supabase
+        .from('members_collectors')
+        .select('name')
+        .eq('member_profile_id', session.user.id)
+        .maybeSingle();
+
+      if (collectorError) {
+        console.error('Error checking collector status:', collectorError);
+      }
+
+      if (collectorData?.name) {
+        console.log('User is a collector based on members_collectors table');
+        return 'collector' as UserRole;
+      }
+
+      // If still no role found, check if user exists in members table
+      const { data: memberData, error: memberError } = await supabase
+        .from('members')
+        .select('id')
+        .eq('auth_user_id', session.user.id)
+        .maybeSingle();
+
+      if (memberError) {
+        console.error('Error checking member status:', memberError);
+      }
+
+      if (memberData?.id) {
+        console.log('User is a regular member');
+        return 'member' as UserRole;
+      }
+
+      console.log('No role found, defaulting to member');
+      return 'member' as UserRole;
     },
     staleTime: ROLE_STALE_TIME,
-    retry: 1,
+    retry: 2,
+    meta: {
+      errorMessage: "Failed to fetch user role"
+    }
   });
 
   const canAccessTab = (tab: string): boolean => {
