@@ -42,8 +42,7 @@ const MembersList = ({ searchTerm, userRole }: MembersListProps) => {
       }
       
       const { data, error } = await query
-        .order('created_at', { ascending: false })
-        .limit(4);
+        .order('created_at', { ascending: false });
       
       if (error) {
         console.error('Error fetching members:', error);
