@@ -13,61 +13,108 @@ const DashboardView = ({ onLogout }: DashboardViewProps) => {
   const queryClient = useQueryClient();
 
   const handleLogout = async () => {
-    // Invalidate all queries before logout
-    await queryClient.invalidateQueries();
-    onLogout();
+    try {
+      await queryClient.invalidateQueries();
+      await supabase.auth.signOut();
+      onLogout();
+    } catch (error) {
+      console.error('Error during logout:', error);
+      toast({
+        title: "Error",
+        description: "Failed to log out",
+        variant: "destructive",
+      });
+    }
   };
 
-  const { data: memberProfile, isError } = useQuery({
+  const { data: memberProfile, isError, error, isLoading } = useQuery({
     queryKey: ['memberProfile'],
     queryFn: async () => {
-      console.log('Fetching member profile...');
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error('No user logged in');
+      try {
+        console.log('Starting member profile fetch...');
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session?.user) {
+          console.error('No active session found');
+          throw new Error('No active session');
+        }
 
-      // First get the member number from the user metadata
-      const { data: { user } } = await supabase.auth.getUser();
-      const memberNumber = user?.user_metadata?.member_number;
-      
-      if (!memberNumber) {
-        console.error('No member number found in user metadata');
-        throw new Error('Member number not found');
-      }
-
-      console.log('Fetching member with number:', memberNumber);
-      
-      let query = supabase
-        .from('members')
-        .select('*');
-      
-      // Use the same OR condition approach as MembersList for more flexible matching
-      query = query.or(`member_number.eq.${memberNumber},auth_user_id.eq.${session.user.id}`);
-      
-      const { data, error } = await query.maybeSingle();
-
-      if (error) {
-        console.error('Error fetching member:', error);
-        toast({
-          variant: "destructive",
-          title: "Error fetching member profile",
-          description: error.message
+        console.log('Session found:', {
+          userId: session.user.id,
+          metadata: session.user.user_metadata
         });
+
+        // First get the member number from the user metadata
+        const memberNumber = session.user.user_metadata?.member_number;
+        console.log('Member number from metadata:', memberNumber);
+        
+        if (!memberNumber) {
+          console.error('No member number in metadata');
+          throw new Error('Member number not found');
+        }
+
+        // Query the members table
+        console.log('Querying members table with:', {
+          memberNumber: memberNumber,
+          userId: session.user.id
+        });
+        
+        const { data: userRoles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id);
+          
+        console.log('User roles:', userRoles);
+        
+        const { data, error } = await supabase
+          .from('members')
+          .select('*')
+          .eq('member_number', memberNumber)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Database error:', error);
+          throw error;
+        }
+
+        console.log('Member query result:', data);
+
+        if (!data) {
+          console.error('No member found with number:', memberNumber);
+          throw new Error('Member not found');
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('Error in member profile query:', error);
         throw error;
       }
-
-      if (!data) {
-        console.error('No member found with number:', memberNumber);
-        toast({
-          variant: "destructive",
-          title: "Member not found",
-          description: "Could not find your member profile"
-        });
-        throw new Error('Member not found');
-      }
-      
-      return data;
     },
+    retry: 1,
   });
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (isError) {
+    console.error('Error in member profile query:', error);
+    if (error instanceof Error && error.message === 'No active session') {
+      toast({
+        title: "Session Expired",
+        description: "Please log in again",
+        variant: "destructive",
+      });
+      onLogout();
+      return null;
+    }
+    
+    return (
+      <div className="text-red-500">
+        Error loading profile. Please try refreshing the page.
+      </div>
+    );
+  }
 
   return (
     <>
@@ -86,7 +133,7 @@ const DashboardView = ({ onLogout }: DashboardViewProps) => {
       </header>
       
       <div className="grid gap-6">
-        <MemberProfileCard memberProfile={memberProfile} />
+        {memberProfile && <MemberProfileCard memberProfile={memberProfile} />}
       </div>
     </>
   );

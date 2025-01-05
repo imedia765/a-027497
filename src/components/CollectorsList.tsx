@@ -1,39 +1,38 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { Database } from '@/integrations/supabase/types';
-import { UserCheck, Users, CreditCard, Link2, AlertCircle } from 'lucide-react';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import TotalCount from "@/components/TotalCount";
-import CollectorMembers from "@/components/CollectorMembers";
-import PrintButtons from "@/components/PrintButtons";
+import { useQuery } from '@tanstack/react-query';
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Users, UserCheck, ChevronDown, ChevronUp } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import CollectorMembers from './CollectorMembers';
+import TotalCount from './TotalCount';
 
-type MemberCollector = Database['public']['Tables']['members_collectors']['Row'];
-type Member = Database['public']['Tables']['members']['Row'];
+interface Collector {
+  id: string;
+  name: string | null;
+  prefix: string | null;
+  number: string | null;
+  email: string | null;
+  phone: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+  member_number: string | null;
+  memberCount?: number;
+}
 
 const CollectorsList = () => {
-  // Fetch all members for the master print functionality
-  const { data: allMembers } = useQuery({
-    queryKey: ['all_members'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('members')
-        .select('*')
-        .order('member_number', { ascending: true });
-      
-      if (error) throw error;
-      return data as Member[];
-    },
-  });
+  const { toast } = useToast();
+  const [error, setError] = useState<string | null>(null);
+  const [expandedCollector, setExpandedCollector] = useState<string | null>(null);
 
-  const { data: collectors, isLoading: collectorsLoading, error: collectorsError } = useQuery({
-    queryKey: ['members_collectors'],
+  const { data: collectors, isLoading } = useQuery({
+    queryKey: ['collectors'],
     queryFn: async () => {
-      console.log('Fetching collectors from members_collectors...');
+      console.log('Fetching collectors...');
+      
       const { data: collectorsData, error: collectorsError } = await supabase
         .from('members_collectors')
         .select(`
@@ -46,132 +45,150 @@ const CollectorsList = () => {
           active,
           created_at,
           updated_at,
-          member_profile_id,
-          collector_profile_id
+          member_number
         `)
         .order('number', { ascending: true });
       
       if (collectorsError) {
         console.error('Error fetching collectors:', collectorsError);
-        throw collectorsError;
+        setError(collectorsError.message);
+        return [];
       }
 
-      const collectorsWithCounts = await Promise.all(collectorsData?.map(async (collector) => {
-        const { count } = await supabase
+      return await Promise.all(collectorsData.map(async (collector) => {
+        const { count, error: countError } = await supabase
           .from('members')
           .select('*', { count: 'exact', head: true })
           .eq('collector', collector.name);
-
-        // Only fetch member number if member_profile_id exists
-        let memberNumber = null;
-        if (collector.member_profile_id) {
-          const { data: memberData } = await supabase
-            .from('members')
-            .select('member_number')
-            .eq('id', collector.member_profile_id)
-            .maybeSingle();
-          
-          memberNumber = memberData?.member_number || null;
+        
+        if (countError) {
+          console.error('Error fetching member count:', countError);
+          toast({
+            title: "Error",
+            description: "Failed to fetch member count",
+            variant: "destructive",
+          });
         }
         
         return {
           ...collector,
           memberCount: count || 0,
-          memberNumber
+          memberNumber: collector.member_number
         };
       }) || []);
-
-      return collectorsWithCounts;
-    },
+    }
   });
 
-  // Calculate total members across all collectors
-  const totalMembers = collectors?.reduce((total, collector) => total + (collector.memberCount || 0), 0) || 0;
+  // Add a new query for total members count
+  const { data: totalMembers } = useQuery({
+    queryKey: ['total-members'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('members')
+        .select('*', { count: 'exact', head: true });
+      return count || 0;
+    }
+  });
 
-  if (collectorsLoading) return <div className="text-center py-4">Loading collectors...</div>;
-  if (collectorsError) return <div className="text-center py-4 text-red-500">Error loading collectors: {collectorsError.message}</div>;
-  if (!collectors?.length) return <div className="text-center py-4">No collectors found</div>;
+  const toggleCollector = (collectorId: string) => {
+    setExpandedCollector(expandedCollector === collectorId ? null : collectorId);
+  };
+
+  if (error) {
+    return (
+      <div className="p-4 text-red-500">
+        Error loading collectors: {error}
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <Skeleton key={i} className="h-24 w-full" />
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <TotalCount 
         items={[
           {
-            count: totalMembers,
-            label: "Total Members",
-            icon: <Users className="w-6 h-6 text-blue-400" />
+            count: collectors?.length || 0,
+            label: "Total Collectors",
+            icon: <Users className="h-5 w-5 text-dashboard-accent1" />
           },
           {
-            count: collectors.length,
-            label: "Total Collectors",
-            icon: <UserCheck className="w-6 h-6 text-purple-400" />
+            count: totalMembers || 0,
+            label: "Total Members",
+            icon: <UserCheck className="h-5 w-5 text-dashboard-accent2" />
           }
         ]}
       />
-      <div className="flex justify-end mb-4">
-        <PrintButtons allMembers={allMembers} />
-      </div>
 
-      <Accordion type="single" collapsible className="space-y-4">
-        {collectors.map((collector) => (          
-          <AccordionItem
-            key={collector.id}
-            value={collector.id}
-            className="bg-dashboard-card border border-white/10 rounded-lg overflow-hidden"
-          >
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-dashboard-accent1 flex items-center justify-center text-white font-medium">
-                    {collector.prefix}
-                  </div>
+      <div className="space-y-4">
+        {collectors?.map((collector) => (
+          <div key={collector.id} className="space-y-2">
+            <Card 
+              className="p-6 bg-dashboard-card hover:bg-dashboard-card/90 transition-all duration-300 border-dashboard-accent1/10 hover:border-dashboard-accent1/20 cursor-pointer"
+              onClick={() => toggleCollector(collector.id)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="space-y-3">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-white">{collector.name}</p>
-                      <span className="text-sm text-gray-400">#{collector.number}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-dashboard-text">
-                      <UserCheck className="w-4 h-4" />
-                      <span>Collector</span>
-                      <span className="text-purple-400">({collector.memberCount} members)</span>
-                      {collector.memberNumber ? (
-                        <span className="flex items-center gap-1 text-green-400">
-                          <Link2 className="w-3 h-3" />
-                          Member #{collector.memberNumber}
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-yellow-400">
-                          <AlertCircle className="w-3 h-3" />
-                          No member number linked
-                        </span>
-                      )}
-                    </div>
+                    <h3 className="text-xl font-semibold text-dashboard-accent1">
+                      {collector.name}
+                    </h3>
+                    <p className="text-sm text-dashboard-muted mt-1">
+                      Member Number: {collector.memberNumber || 'Not assigned'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge 
+                      variant="outline" 
+                      className="bg-dashboard-accent2/10 text-dashboard-accent2 border-dashboard-accent2/20 hover:bg-dashboard-accent2/15"
+                    >
+                      <UserCheck className="w-3 h-3 mr-1" />
+                      {collector.memberCount} Members
+                    </Badge>
+                    {collector.active ? (
+                      <Badge 
+                        variant="outline" 
+                        className="bg-dashboard-accent3/10 text-dashboard-accent3 border-dashboard-accent3/20 hover:bg-dashboard-accent3/15"
+                      >
+                        Active
+                      </Badge>
+                    ) : (
+                      <Badge 
+                        variant="outline" 
+                        className="bg-dashboard-muted/10 text-dashboard-muted border-dashboard-muted/20"
+                      >
+                        Inactive
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <PrintButtons collectorName={collector.name || ''} />
-                  <div className={`px-3 py-1 rounded-full ${
-                    collector.active 
-                      ? 'bg-green-500/20 text-green-400' 
-                      : 'bg-gray-500/20 text-gray-400'
-                  }`}>
-                    {collector.active ? 'Active' : 'Inactive'}
-                  </div>
+                  <Users className="w-10 h-10 text-dashboard-accent1/20" />
+                  {expandedCollector === collector.id ? (
+                    <ChevronUp className="w-6 h-6 text-dashboard-accent1" />
+                  ) : (
+                    <ChevronDown className="w-6 h-6 text-dashboard-accent1" />
+                  )}
                 </div>
               </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="space-y-3 mt-2">
-                {collector.memberCount > 0 ? (
-                  <CollectorMembers collectorName={collector.name || ''} />
-                ) : (
-                  <p className="text-sm text-gray-400">No members assigned to this collector</p>
-                )}
+            </Card>
+            {expandedCollector === collector.id && collector.name && (
+              <div className="pl-4 border-l-2 border-dashboard-accent1/20">
+                <CollectorMembers collectorName={collector.name} />
               </div>
-            </AccordionContent>
-          </AccordionItem>
+            )}
+          </div>
         ))}
-      </Accordion>
+      </div>
     </div>
   );
 };
