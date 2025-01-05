@@ -17,7 +17,6 @@ type Member = Database['public']['Tables']['members']['Row'];
 
 interface CollectorWithCounts extends MemberCollector {
   memberCount: number;
-  memberNumber: string | null;
 }
 
 const CollectorsList = () => {
@@ -50,7 +49,8 @@ const CollectorsList = () => {
           phone,
           active,
           created_at,
-          updated_at
+          updated_at,
+          member_number
         `)
         .order('number', { ascending: true });
       
@@ -61,6 +61,7 @@ const CollectorsList = () => {
 
       if (!collectorsData) return [];
 
+      // Get member count for each collector
       const collectorsWithCounts = await Promise.all(collectorsData.map(async (collector) => {
         const { count } = await supabase
           .from('members')
@@ -69,8 +70,7 @@ const CollectorsList = () => {
 
         return {
           ...collector,
-          memberCount: count || 0,
-          memberNumber: null // Since we don't have collector_profile_id in the schema
+          memberCount: count || 0
         };
       }));
 
