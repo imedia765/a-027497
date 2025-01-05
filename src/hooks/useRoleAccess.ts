@@ -27,30 +27,39 @@ export const useRoleAccess = () => {
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
+        .eq('user_id', session.user.id);
 
       if (roleError) {
         console.error('Error fetching role from user_roles:', roleError);
       }
 
-      if (roleData?.role) {
-        console.log('Found role in user_roles table:', roleData.role);
-        return roleData.role as UserRole;
+      if (roleData?.length > 0) {
+        console.log('Found roles in user_roles table:', roleData);
+        // If user has admin role, return that
+        if (roleData.some(r => r.role === 'admin')) {
+          return 'admin' as UserRole;
+        }
+        // If user has collector role, return that
+        if (roleData.some(r => r.role === 'collector')) {
+          return 'collector' as UserRole;
+        }
+        // Otherwise return member role
+        if (roleData.some(r => r.role === 'member')) {
+          return 'member' as UserRole;
+        }
       }
 
       // If no role in user_roles table, check if user is a collector
       const { data: collectorData, error: collectorError } = await supabase
         .from('members_collectors')
         .select('name')
-        .eq('member_profile_id', session.user.id)
-        .maybeSingle();
+        .eq('collector_profile_id', session.user.id);
 
       if (collectorError) {
         console.error('Error checking collector status:', collectorError);
       }
 
-      if (collectorData?.name) {
+      if (collectorData?.length > 0) {
         console.log('User is a collector based on members_collectors table');
         return 'collector' as UserRole;
       }
