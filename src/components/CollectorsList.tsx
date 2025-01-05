@@ -15,6 +15,11 @@ import PrintButtons from "@/components/PrintButtons";
 type MemberCollector = Database['public']['Tables']['members_collectors']['Row'];
 type Member = Database['public']['Tables']['members']['Row'];
 
+interface CollectorWithCounts extends MemberCollector {
+  memberCount: number;
+  memberNumber: string | null;
+}
+
 const CollectorsList = () => {
   // Fetch all members for the master print functionality
   const { data: allMembers } = useQuery({
@@ -45,8 +50,7 @@ const CollectorsList = () => {
           phone,
           active,
           created_at,
-          updated_at,
-          collector_profile_id
+          updated_at
         `)
         .order('number', { ascending: true });
       
@@ -63,22 +67,10 @@ const CollectorsList = () => {
           .select('*', { count: 'exact', head: true })
           .eq('collector', collector.name);
 
-        // Only fetch member number if collector_profile_id exists
-        let memberNumber = null;
-        if (collector.collector_profile_id) {
-          const { data: memberData } = await supabase
-            .from('members')
-            .select('member_number')
-            .eq('id', collector.collector_profile_id)
-            .maybeSingle();
-          
-          memberNumber = memberData?.member_number || null;
-        }
-        
         return {
           ...collector,
           memberCount: count || 0,
-          memberNumber
+          memberNumber: null // Since we don't have collector_profile_id in the schema
         };
       }));
 
@@ -135,17 +127,6 @@ const CollectorsList = () => {
                       <UserCheck className="w-4 h-4" />
                       <span>Collector</span>
                       <span className="text-purple-400">({collector.memberCount} members)</span>
-                      {collector.memberNumber ? (
-                        <span className="flex items-center gap-1 text-green-400">
-                          <Link2 className="w-3 h-3" />
-                          Member #{collector.memberNumber}
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-yellow-400">
-                          <AlertCircle className="w-3 h-3" />
-                          No member number linked
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
