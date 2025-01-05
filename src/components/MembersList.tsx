@@ -4,9 +4,6 @@ import { Database } from '@/integrations/supabase/types';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type Member = Database['public']['Tables']['members']['Row'];
 
@@ -15,11 +12,7 @@ interface MembersListProps {
   userRole: string | null;
 }
 
-const ITEMS_PER_PAGE = 4;
-
 const MembersList = ({ searchTerm, userRole }: MembersListProps) => {
-  const [currentPage, setCurrentPage] = useState(0);
-
   const { data: members, isLoading, error } = useQuery({
     queryKey: ['members', searchTerm, userRole],
     queryFn: async () => {
@@ -49,7 +42,8 @@ const MembersList = ({ searchTerm, userRole }: MembersListProps) => {
       }
       
       const { data, error } = await query
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(4);
       
       if (error) {
         console.error('Error fetching members:', error);
@@ -65,27 +59,11 @@ const MembersList = ({ searchTerm, userRole }: MembersListProps) => {
   if (error) return <div className="text-center py-4 text-red-500">Error loading members: {error.message}</div>;
   if (!members?.length) return <div className="text-center py-4">No members found</div>;
 
-  const totalPages = Math.ceil(members.length / ITEMS_PER_PAGE);
-  const startIndex = currentPage * ITEMS_PER_PAGE;
-  const displayedMembers = members.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages - 1) {
-      setCurrentPage(prev => prev + 1);
-    }
-  };
-
-  const handlePrevPage = () => {
-    if (currentPage > 0) {
-      setCurrentPage(prev => prev - 1);
-    }
-  };
-
   return (
     <div className="space-y-4">
       <ScrollArea className="h-[600px] w-full rounded-md">
         <Accordion type="single" collapsible className="space-y-4">
-          {displayedMembers.map((member) => (
+          {members.map((member) => (
             <AccordionItem 
               key={member.id} 
               value={member.id}
@@ -158,30 +136,6 @@ const MembersList = ({ searchTerm, userRole }: MembersListProps) => {
           ))}
         </Accordion>
       </ScrollArea>
-      
-      <div className="flex justify-between items-center pt-4">
-        <Button
-          variant="outline"
-          onClick={handlePrevPage}
-          disabled={currentPage === 0}
-          className="bg-dashboard-card hover:bg-dashboard-accent1/20"
-        >
-          <ChevronLeft className="h-4 w-4 mr-2" />
-          Previous
-        </Button>
-        <span className="text-dashboard-text">
-          Page {currentPage + 1} of {totalPages}
-        </span>
-        <Button
-          variant="outline"
-          onClick={handleNextPage}
-          disabled={currentPage >= totalPages - 1}
-          className="bg-dashboard-card hover:bg-dashboard-accent1/20"
-        >
-          Next
-          <ChevronRight className="h-4 w-4 ml-2" />
-        </Button>
-      </div>
     </div>
   );
 };
