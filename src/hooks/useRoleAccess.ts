@@ -53,7 +53,7 @@ export const useRoleAccess = () => {
       const { data: collectorData, error: collectorError } = await supabase
         .from('members_collectors')
         .select('name')
-        .eq('collector_profile_id', session.user.id);
+        .eq('member_number', session.user.user_metadata.member_number);
 
       if (collectorError) {
         console.error('Error checking collector status:', collectorError);
