@@ -60,8 +60,8 @@ const MembersList = ({ searchTerm, userRole }: MembersListProps) => {
   if (!members?.length) return <div className="text-center py-4">No members found</div>;
 
   return (
-    <div className="space-y-4">
-      <ScrollArea className="h-[600px] w-full rounded-md">
+    <div className="space-y-4 h-[calc(100vh-16rem)]">
+      <ScrollArea className="h-full w-full rounded-md">
         <Accordion type="single" collapsible className="space-y-4">
           {members.map((member) => (
             <AccordionItem 
