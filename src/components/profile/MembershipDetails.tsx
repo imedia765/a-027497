@@ -1,9 +1,9 @@
 import { Member } from "@/types/member";
 import RoleBadge from "./RoleBadge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Shield } from "lucide-react";
+import { Badge } from "lucide-react";
 import { useQuery } from '@tanstack/react-query';
 
 interface MembershipDetailsProps {
@@ -113,30 +113,27 @@ const MembershipDetails = ({ memberProfile, userRole }: MembershipDetailsProps) 
         <div className="text-dashboard-text flex items-center gap-2">
           <span className="text-dashboard-accent2">Type:</span>
           <span className="flex items-center gap-2">
-            {memberProfile?.membership_type || 'Standard'}
+            {memberProfile?.membership_type}
             {displayRole === 'admin' ? (
               <div className="ml-2">
                 <Select onValueChange={handleRoleChange}>
                   <SelectTrigger className="w-[140px] h-8 bg-dashboard-accent1/10 border-dashboard-accent1/20">
-                    <SelectValue placeholder="Change Role" />
+                    <Badge className="w-4 h-4" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">
                       <div className="flex items-center gap-2">
-                        <Shield className="w-4 h-4" />
-                        Admin
+                        <Badge className="w-4 h-4" />
                       </div>
                     </SelectItem>
                     <SelectItem value="collector">
                       <div className="flex items-center gap-2">
-                        <Shield className="w-4 h-4" />
-                        Collector
+                        <Badge className="w-4 h-4" />
                       </div>
                     </SelectItem>
                     <SelectItem value="member">
                       <div className="flex items-center gap-2">
-                        <Shield className="w-4 h-4" />
-                        Member
+                        <Badge className="w-4 h-4" />
                       </div>
                     </SelectItem>
                   </SelectContent>
