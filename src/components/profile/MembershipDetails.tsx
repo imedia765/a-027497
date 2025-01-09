@@ -93,7 +93,7 @@ const MembershipDetails = ({ memberProfile, userRole }: MembershipDetailsProps) 
   return (
     <div className="space-y-2">
       <p className="text-dashboard-muted text-sm">Membership Details</p>
-      <div className="space-y-2">
+      <div className="space-y-3">
         <div className="text-dashboard-text flex items-center gap-2">
           Status:{' '}
           <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
@@ -112,28 +112,35 @@ const MembershipDetails = ({ memberProfile, userRole }: MembershipDetailsProps) 
         )}
         <div className="text-dashboard-text flex items-center gap-2">
           <span className="text-dashboard-accent2">Type:</span>
-          <span className="flex items-center gap-2">
-            {memberProfile?.membership_type}
+          <div className="flex items-center gap-2">
+            {memberProfile?.membership_type && (
+              <span className="text-dashboard-text capitalize">
+                {memberProfile.membership_type}
+              </span>
+            )}
             {displayRole === 'admin' ? (
               <div className="ml-2">
                 <Select onValueChange={handleRoleChange}>
-                  <SelectTrigger className="w-[140px] h-8 bg-dashboard-accent1/10 border-dashboard-accent1/20">
-                    <Badge className="w-4 h-4" />
+                  <SelectTrigger className="w-[48px] h-8 bg-dashboard-accent1/10 border-dashboard-accent1/20 px-2">
+                    <Badge className="w-4 h-4 text-dashboard-accent1" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">
                       <div className="flex items-center gap-2">
                         <Badge className="w-4 h-4" />
+                        <span>Admin</span>
                       </div>
                     </SelectItem>
                     <SelectItem value="collector">
                       <div className="flex items-center gap-2">
                         <Badge className="w-4 h-4" />
+                        <span>Collector</span>
                       </div>
                     </SelectItem>
                     <SelectItem value="member">
                       <div className="flex items-center gap-2">
                         <Badge className="w-4 h-4" />
+                        <span>Member</span>
                       </div>
                     </SelectItem>
                   </SelectContent>
@@ -142,7 +149,7 @@ const MembershipDetails = ({ memberProfile, userRole }: MembershipDetailsProps) 
             ) : (
               <RoleBadge role={displayRole} />
             )}
-          </span>
+          </div>
         </div>
       </div>
     </div>
