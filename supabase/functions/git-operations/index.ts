@@ -68,9 +68,10 @@ serve(async (req) => {
       throw new Error(`Invalid GitHub token: ${tokenError}`)
     }
 
-    // Verify repository access
-    const repoCheckResponse = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}`,
+    // Get the current commit SHA
+    console.log('Fetching current commit SHA...')
+    const refResponse = await fetch(
+      `https://api.github.com/repos/${repoOwner}/${repoName}/git/refs/heads/${branch}`,
       {
         headers: {
           'Authorization': `token ${githubToken}`,
@@ -80,14 +81,18 @@ serve(async (req) => {
       }
     )
 
-    if (!repoCheckResponse.ok) {
-      const errorData = await repoCheckResponse.text()
-      throw new Error(`Repository access failed: ${errorData}`)
+    if (!refResponse.ok) {
+      const refError = await refResponse.text()
+      console.error('Failed to get ref:', refError)
+      throw new Error(`Failed to get current commit SHA: ${refError}`)
     }
+
+    const refData = await refResponse.json()
+    const currentSha = refData.object.sha
+    console.log('Current commit SHA:', currentSha)
 
     // If only validating access, return here
     if (validateOnly) {
-      // Update log with validation success
       if (logId) {
         await supabase
           .from('git_operations_logs')
@@ -107,27 +112,8 @@ serve(async (req) => {
       )
     }
 
-    // Get the current commit SHA
-    const refResponse = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/git/refs/heads/${branch}`,
-      {
-        headers: {
-          'Authorization': `token ${githubToken}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'Supabase-Edge-Function'
-        }
-      }
-    )
-
-    if (!refResponse.ok) {
-      const refError = await refResponse.text()
-      throw new Error(`Failed to get current commit SHA: ${refError}`)
-    }
-
-    const refData = await refResponse.json()
-    const currentSha = refData.object.sha
-
     // Perform the actual push operation
+    console.log('Performing push operation...')
     const pushResponse = await fetch(
       `https://api.github.com/repos/${repoOwner}/${repoName}/git/refs/heads/${branch}`,
       {
@@ -145,9 +131,11 @@ serve(async (req) => {
       }
     )
 
+    const pushResponseText = await pushResponse.text()
+    console.log('Push response:', pushResponseText)
+
     if (!pushResponse.ok) {
-      const pushError = await pushResponse.text()
-      throw new Error(`Push operation failed: ${pushError}`)
+      throw new Error(`Push operation failed: ${pushResponseText}`)
     }
 
     // Update log with success
