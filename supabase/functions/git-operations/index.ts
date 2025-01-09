@@ -107,6 +107,26 @@ serve(async (req) => {
       )
     }
 
+    // Get the current commit SHA
+    const refResponse = await fetch(
+      `https://api.github.com/repos/${repoOwner}/${repoName}/git/refs/heads/${branch}`,
+      {
+        headers: {
+          'Authorization': `token ${githubToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Supabase-Edge-Function'
+        }
+      }
+    )
+
+    if (!refResponse.ok) {
+      const refError = await refResponse.text()
+      throw new Error(`Failed to get current commit SHA: ${refError}`)
+    }
+
+    const refData = await refResponse.json()
+    const currentSha = refData.object.sha
+
     // Perform the actual push operation
     const pushResponse = await fetch(
       `https://api.github.com/repos/${repoOwner}/${repoName}/git/refs/heads/${branch}`,
@@ -115,11 +135,12 @@ serve(async (req) => {
         headers: {
           'Authorization': `token ${githubToken}`,
           'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'Supabase-Edge-Function'
+          'User-Agent': 'Supabase-Edge-Function',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          force: true,
-          sha: 'HEAD'
+          sha: currentSha,
+          force: true
         })
       }
     )
