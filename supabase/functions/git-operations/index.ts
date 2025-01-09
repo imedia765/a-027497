@@ -115,9 +115,31 @@ serve(async (req) => {
       )
     }
 
-    // Create an empty commit
-    console.log('Creating empty commit...')
+    // Get the latest commit to get its tree
+    console.log('Fetching latest commit...')
     const commitResponse = await fetch(
+      `https://api.github.com/repos/${repoOwner}/${repoName}/git/commits/${currentSha}`,
+      {
+        headers: {
+          'Authorization': `token ${githubToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Supabase-Edge-Function'
+        }
+      }
+    )
+
+    if (!commitResponse.ok) {
+      const commitError = await commitResponse.text()
+      throw new Error(`Failed to get latest commit: ${commitError}`)
+    }
+
+    const commitData = await commitResponse.json()
+    const treeSha = commitData.tree.sha
+    console.log('Got tree SHA:', treeSha)
+
+    // Create a new commit using the existing tree
+    console.log('Creating new commit...')
+    const newCommitResponse = await fetch(
       `https://api.github.com/repos/${repoOwner}/${repoName}/git/commits`,
       {
         method: 'POST',
@@ -129,19 +151,19 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           message: 'Force commit: Pushing all files',
-          tree: refData.object.sha,
+          tree: treeSha,
           parents: [currentSha]
         })
       }
     )
 
-    if (!commitResponse.ok) {
-      const commitError = await commitResponse.text()
-      throw new Error(`Failed to create commit: ${commitError}`)
+    if (!newCommitResponse.ok) {
+      const newCommitError = await newCommitResponse.text()
+      throw new Error(`Failed to create commit: ${newCommitError}`)
     }
 
-    const commitData = await commitResponse.json()
-    console.log('Empty commit created:', commitData.sha)
+    const newCommitData = await newCommitResponse.json()
+    console.log('New commit created:', newCommitData.sha)
 
     // Force push the new commit
     console.log('Force pushing to repository...')
@@ -156,7 +178,7 @@ serve(async (req) => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          sha: commitData.sha,
+          sha: newCommitData.sha,
           force: true
         })
       }
