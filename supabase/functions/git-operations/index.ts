@@ -53,8 +53,10 @@ serve(async (req) => {
     const { branch = 'main', operation = 'push', logId, validateOnly = false } = await req.json()
     const repoOwner = 'imedia765'
     const repoName = 's-935078'
+    const repoUrl = `https://${githubToken}@github.com/${repoOwner}/${repoName}.git`
 
     // Verify GitHub token is valid
+    console.log('Verifying GitHub token...')
     const tokenCheckResponse = await fetch('https://api.github.com/user', {
       headers: {
         'Authorization': `token ${githubToken}`,
@@ -67,6 +69,7 @@ serve(async (req) => {
       const tokenError = await tokenCheckResponse.text()
       throw new Error(`Invalid GitHub token: ${tokenError}`)
     }
+    console.log('GitHub token verified')
 
     // Get the current commit SHA
     console.log('Fetching current commit SHA...')
@@ -112,8 +115,36 @@ serve(async (req) => {
       )
     }
 
-    // Perform the actual push operation
-    console.log('Performing push operation...')
+    // Create an empty commit
+    console.log('Creating empty commit...')
+    const commitResponse = await fetch(
+      `https://api.github.com/repos/${repoOwner}/${repoName}/git/commits`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `token ${githubToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Supabase-Edge-Function',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: 'Force commit: Pushing all files',
+          tree: refData.object.sha,
+          parents: [currentSha]
+        })
+      }
+    )
+
+    if (!commitResponse.ok) {
+      const commitError = await commitResponse.text()
+      throw new Error(`Failed to create commit: ${commitError}`)
+    }
+
+    const commitData = await commitResponse.json()
+    console.log('Empty commit created:', commitData.sha)
+
+    // Force push the new commit
+    console.log('Force pushing to repository...')
     const pushResponse = await fetch(
       `https://api.github.com/repos/${repoOwner}/${repoName}/git/refs/heads/${branch}`,
       {
@@ -125,18 +156,18 @@ serve(async (req) => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          sha: currentSha,
+          sha: commitData.sha,
           force: true
         })
       }
     )
 
-    const pushResponseText = await pushResponse.text()
-    console.log('Push response:', pushResponseText)
-
     if (!pushResponse.ok) {
-      throw new Error(`Push operation failed: ${pushResponseText}`)
+      const pushError = await pushResponse.text()
+      throw new Error(`Push operation failed: ${pushError}`)
     }
+
+    console.log('Force push successful')
 
     // Update log with success
     if (logId) {
