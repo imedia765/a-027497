@@ -14,7 +14,7 @@ export const MemberPaymentsList = ({ payments }: MemberPaymentsListProps) => {
           <TableRow>
             <TableHead className="text-dashboard-highlight">Payment #</TableHead>
             <TableHead className="text-dashboard-highlight">Date</TableHead>
-            <TableHead className="text-dashboard-highlight">Payee</TableHead>
+            <TableHead className="text-dashboard-highlight">Member Name</TableHead>
             <TableHead className="text-dashboard-highlight">Member #</TableHead>
             <TableHead className="text-dashboard-highlight">Type</TableHead>
             <TableHead className="text-dashboard-highlight">Amount</TableHead>
