@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { Badge as BadgeIcon } from "lucide-react";
+import { ShieldCheck, UserCheck, Users } from "lucide-react";
 
 interface RoleBadgeProps {
   role: string | null;
@@ -25,21 +25,21 @@ const RoleBadge = ({ role }: RoleBadgeProps) => {
       case 'admin':
         return (
           <Badge variant="outline" className="bg-dashboard-accent1/20 text-dashboard-accent1 border-0 gap-1 inline-flex items-center">
-            <BadgeIcon className="w-3 h-3" />
+            <ShieldCheck className="w-3 h-3" />
             <span>Admin</span>
           </Badge>
         );
       case 'collector':
         return (
           <Badge variant="outline" className="bg-dashboard-accent2/20 text-dashboard-accent2 border-0 gap-1 inline-flex items-center">
-            <BadgeIcon className="w-3 h-3" />
+            <UserCheck className="w-3 h-3" />
             <span>Collector</span>
           </Badge>
         );
       default:
         return (
           <Badge variant="outline" className="bg-dashboard-accent3/20 text-dashboard-accent3 border-0 gap-1 inline-flex items-center">
-            <BadgeIcon className="w-3 h-3" />
+            <Users className="w-3 h-3" />
             <span>Member</span>
           </Badge>
         );

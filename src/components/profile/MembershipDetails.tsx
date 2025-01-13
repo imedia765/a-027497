@@ -1,9 +1,9 @@
 import { Member } from "@/types/member";
 import RoleBadge from "./RoleBadge";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Badge } from "lucide-react";
+import { Shield } from "lucide-react";
 import { useQuery } from '@tanstack/react-query';
 
 interface MembershipDetailsProps {
@@ -93,7 +93,7 @@ const MembershipDetails = ({ memberProfile, userRole }: MembershipDetailsProps) 
   return (
     <div className="space-y-2">
       <p className="text-dashboard-muted text-sm">Membership Details</p>
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="text-dashboard-text flex items-center gap-2">
           Status:{' '}
           <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
@@ -112,35 +112,31 @@ const MembershipDetails = ({ memberProfile, userRole }: MembershipDetailsProps) 
         )}
         <div className="text-dashboard-text flex items-center gap-2">
           <span className="text-dashboard-accent2">Type:</span>
-          <div className="flex items-center gap-2">
-            {memberProfile?.membership_type && (
-              <span className="text-dashboard-text capitalize">
-                {memberProfile.membership_type}
-              </span>
-            )}
+          <span className="flex items-center gap-2">
+            {memberProfile?.membership_type || 'Standard'}
             {displayRole === 'admin' ? (
               <div className="ml-2">
                 <Select onValueChange={handleRoleChange}>
-                  <SelectTrigger className="w-[48px] h-8 bg-dashboard-accent1/10 border-dashboard-accent1/20 px-2">
-                    <Badge className="w-4 h-4 text-dashboard-accent1" />
+                  <SelectTrigger className="w-[140px] h-8 bg-dashboard-accent1/10 border-dashboard-accent1/20">
+                    <SelectValue placeholder="Change Role" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">
                       <div className="flex items-center gap-2">
-                        <Badge className="w-4 h-4" />
-                        <span>Admin</span>
+                        <Shield className="w-4 h-4" />
+                        Admin
                       </div>
                     </SelectItem>
                     <SelectItem value="collector">
                       <div className="flex items-center gap-2">
-                        <Badge className="w-4 h-4" />
-                        <span>Collector</span>
+                        <Shield className="w-4 h-4" />
+                        Collector
                       </div>
                     </SelectItem>
                     <SelectItem value="member">
                       <div className="flex items-center gap-2">
-                        <Badge className="w-4 h-4" />
-                        <span>Member</span>
+                        <Shield className="w-4 h-4" />
+                        Member
                       </div>
                     </SelectItem>
                   </SelectContent>
@@ -149,7 +145,7 @@ const MembershipDetails = ({ memberProfile, userRole }: MembershipDetailsProps) 
             ) : (
               <RoleBadge role={displayRole} />
             )}
-          </div>
+          </span>
         </div>
       </div>
     </div>
