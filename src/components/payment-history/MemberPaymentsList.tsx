@@ -25,7 +25,7 @@ export const MemberPaymentsList = ({ payments }: MemberPaymentsListProps) => {
           {payments.map((payment) => (
             <TableRow key={payment.id}>
               <TableCell className="text-dashboard-text font-mono">
-                {payment.id.slice(0, 8)}
+                {payment.payment_number || payment.id.slice(0, 8)}
               </TableCell>
               <TableCell className="text-dashboard-text">
                 {formatDate(payment.date)}
