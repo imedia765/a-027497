@@ -18,7 +18,7 @@ interface PaymentDialogProps {
   memberId: string;
   memberNumber: string;
   memberName: string;
-  collectorInfo: { name: string | null; phone: string | null } | null;
+  collectorInfo: { name: string | null; phone: string | null; prefix: string; number: string } | null;
 }
 
 const PaymentDialog = ({ 
@@ -167,7 +167,12 @@ const PaymentDialog = ({
               onPaymentMethodChange={setPaymentMethod}
             />
 
-            {paymentMethod === 'bank_transfer' && <BankDetails />}
+            {paymentMethod === 'bank_transfer' && (
+              <BankDetails 
+                collectorPrefix={collectorInfo?.prefix}
+                collectorNumber={collectorInfo?.number}
+              />
+            )}
             
             <Button 
               className="w-full bg-dashboard-accent2 hover:bg-dashboard-accent2/80 text-white h-12 text-lg font-medium"
