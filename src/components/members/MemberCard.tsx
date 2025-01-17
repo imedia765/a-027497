@@ -2,7 +2,15 @@ import { Member } from '@/types/member';
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Edit } from "lucide-react";
+import { Edit, FileText } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { PaymentStatus } from '../financials/payment-card/PaymentStatus';
+import { differenceInDays } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
 
 interface MemberCardProps {
   member: Member;
@@ -12,6 +20,76 @@ interface MemberCardProps {
 }
 
 const MemberCard = ({ member, userRole, onPaymentClick, onEditClick }: MemberCardProps) => {
+  const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
+  const [note, setNote] = useState(member.admin_note || '');
+  const { toast } = useToast();
+
+  const { data: paymentRequest } = useQuery({
+    queryKey: ['payment_request', member.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_requests')
+        .select('*')
+        .eq('member_id', member.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+        
+      if (error) throw error;
+      return data?.[0] || null;
+    },
+  });
+
+  const getPaymentStatus = () => {
+    if (!member.yearly_payment_due_date) return null;
+    
+    const dueDate = new Date(member.yearly_payment_due_date);
+    const today = new Date();
+    const daysUntilDue = differenceInDays(dueDate, today);
+
+    // If there's a completed payment
+    if (paymentRequest?.status === 'approved') {
+      return 'completed';
+    }
+    
+    // If there's a pending payment in the payment_requests table
+    if (paymentRequest?.status === 'pending') {
+      return 'pending';
+    }
+    
+    // If payment is overdue
+    if (daysUntilDue < 0) {
+      return 'overdue';
+    }
+
+    return null;
+  };
+
+  const handleSaveNote = async () => {
+    try {
+      const { error } = await supabase
+        .from('members')
+        .update({ admin_note: note })
+        .eq('id', member.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Note saved",
+        description: "The admin note has been updated successfully.",
+      });
+      setIsNoteDialogOpen(false);
+    } catch (error) {
+      console.error('Error saving note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save the note. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const status = getPaymentStatus();
+
   return (
     <AccordionItem 
       key={member.id} 
@@ -27,12 +105,20 @@ const MemberCard = ({ member, userRole, onPaymentClick, onEditClick }: MemberCar
           </Avatar>
           
           <div className="flex justify-between items-center w-full">
-            <div>
-              <h3 className="text-xl font-medium text-dashboard-accent2 mb-1">{member.full_name}</h3>
-              <p className="bg-dashboard-accent1/10 px-3 py-1 rounded-full inline-flex items-center">
-                <span className="text-dashboard-accent1">Member #</span>
-                <span className="text-dashboard-accent2 font-medium ml-1">{member.member_number}</span>
-              </p>
+            <div className="flex items-center gap-2">
+              <div>
+                <h3 className="text-xl font-medium text-dashboard-accent2 mb-1">{member.full_name}</h3>
+                <div className="flex items-center gap-2">
+                  <p className="bg-dashboard-accent1/10 px-3 py-1 rounded-full inline-flex items-center">
+                    <span className="text-dashboard-accent1">Member #</span>
+                    <span className="text-dashboard-accent2 font-medium ml-1">{member.member_number}</span>
+                  </p>
+                  {status && <PaymentStatus status={status} />}
+                </div>
+              </div>
+              {member.admin_note && (
+                <FileText className="w-4 h-4 text-dashboard-accent3" />
+              )}
             </div>
             <div className={`px-3 py-1 rounded-full text-sm ${
               member.status === 'active' 
@@ -98,6 +184,41 @@ const MemberCard = ({ member, userRole, onPaymentClick, onEditClick }: MemberCar
                 Edit Profile
               </Button>
             </div>
+          </div>
+        )}
+
+        {userRole === 'admin' && (
+          <div className="mt-4 pt-4 border-t border-white/10">
+            <Dialog open={isNoteDialogOpen} onOpenChange={setIsNoteDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full bg-dashboard-accent2/10 hover:bg-dashboard-accent2/20 text-dashboard-accent2 border-dashboard-accent2/20"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  {member.admin_note ? 'Edit Note' : 'Add Note'}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px] bg-dashboard-card text-dashboard-text">
+                <DialogHeader>
+                  <DialogTitle className="text-dashboard-text">Admin Note for {member.full_name}</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <Textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Enter admin note here..."
+                    className="min-h-[100px] bg-dashboard-background text-dashboard-text"
+                  />
+                  <Button
+                    onClick={handleSaveNote}
+                    className="w-full bg-dashboard-accent2 hover:bg-dashboard-accent2/80 text-white"
+                  >
+                    Save Note
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
       </AccordionContent>
