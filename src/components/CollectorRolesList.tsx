@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, AlertCircle, User, Shield, Clock } from "lucide-react";
+import { Loader2, AlertCircle, User, Shield, Clock, Check, XCircle } from "lucide-react";
 import { format } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -27,6 +27,10 @@ interface CollectorInfo {
     role: string;
     created_at: string;
   }[];
+  email: string | null;
+  phone: string | null;
+  prefix: string | null;
+  number: string | null;
 }
 
 const CollectorRolesList = () => {
@@ -44,7 +48,7 @@ const CollectorRolesList = () => {
       try {
         const { data: activeCollectors, error: collectorsError } = await supabase
           .from('members_collectors')
-          .select('member_number, name')
+          .select('member_number, name, email, phone, prefix, number')
           .eq('active', true);
 
         if (collectorsError) {
@@ -87,7 +91,11 @@ const CollectorRolesList = () => {
                 role_details: roles?.map(r => ({
                   role: r.role,
                   created_at: r.created_at
-                })) || []
+                })) || [],
+                email: collector.email,
+                phone: collector.phone,
+                prefix: collector.prefix,
+                number: collector.number
               };
             } catch (err) {
               console.error('Error processing collector:', collector.member_number, err);
@@ -148,9 +156,11 @@ const CollectorRolesList = () => {
             <TableRow className="border-dashboard-cardBorder hover:bg-dashboard-card/50">
               <TableHead className="text-[#F2FCE2]">Collector</TableHead>
               <TableHead className="text-[#F2FCE2]">Member #</TableHead>
-              <TableHead className="text-[#F2FCE2]">Roles</TableHead>
-              <TableHead className="text-[#F2FCE2]">Role Added</TableHead>
-              <TableHead className="text-[#F2FCE2]">Status</TableHead>
+              <TableHead className="text-[#F2FCE2]">Contact Info</TableHead>
+              <TableHead className="text-[#F2FCE2]">Roles & Access</TableHead>
+              <TableHead className="text-[#F2FCE2]">Role History</TableHead>
+              <TableHead className="text-[#F2FCE2]">Sync Status</TableHead>
+              <TableHead className="text-[#F2FCE2]">Permissions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -165,31 +175,69 @@ const CollectorRolesList = () => {
                     {collector.full_name}
                   </div>
                 </TableCell>
-                <TableCell className="text-[#D6BCFA]">{collector.member_number}</TableCell>
+                <TableCell className="text-[#D6BCFA]">
+                  <div className="flex flex-col">
+                    <span>{collector.member_number}</span>
+                    <span className="text-sm text-[#9B87F5]">{collector.prefix}-{collector.number}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-[#F3F3F3]">
+                  <div className="flex flex-col">
+                    <span>{collector.email}</span>
+                    <span>{collector.phone}</span>
+                  </div>
+                </TableCell>
                 <TableCell>
-                  <div className="flex gap-1 flex-wrap">
-                    {collector.roles.map((role, idx) => (
-                      <Badge 
-                        key={`${role}-${idx}`}
-                        variant="outline"
-                        className="bg-[#9B87F5]/10 text-[#D6BCFA] border-[#9B87F5]/20"
-                      >
-                        {role}
-                      </Badge>
-                    ))}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-1 flex-wrap">
+                      {collector.roles.map((role, idx) => (
+                        <Badge 
+                          key={`${role}-${idx}`}
+                          variant="outline"
+                          className="bg-[#9B87F5]/10 text-[#D6BCFA] border-[#9B87F5]/20"
+                        >
+                          {role}
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="text-sm text-[#9B87F5]">
+                      Current Role: {userRole || 'Loading...'}
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell className="text-[#F1F0FB]">
-                  {collector.role_details[0]?.created_at && 
-                    format(new Date(collector.role_details[0].created_at), 'PPp')}
+                  <div className="flex flex-col gap-1">
+                    {collector.role_details.map((detail, idx) => (
+                      <div key={idx} className="text-sm">
+                        {detail.role}: {format(new Date(detail.created_at), 'PPp')}
+                      </div>
+                    ))}
+                  </div>
                 </TableCell>
                 <TableCell>
-                  <Badge 
-                    variant="outline" 
-                    className="bg-green-500/20 text-green-400"
-                  >
-                    Active
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {syncStatus ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Clock className="h-4 w-4 text-yellow-500" />
+                    )}
+                    <span className="text-sm">
+                      {syncStatus ? 'Synced' : 'Pending'}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-1 text-sm">
+                    {permissions && Object.entries(permissions).map(([key, value]) => (
+                      <Badge 
+                        key={key}
+                        variant="outline" 
+                        className={`${value ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
+                      >
+                        {key}
+                      </Badge>
+                    ))}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
