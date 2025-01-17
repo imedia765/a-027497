@@ -27,6 +27,11 @@ interface CollectorInfo {
     role: string;
     created_at: string;
   }[];
+  email: string | null;
+  phone: string | null;
+  active: boolean;
+  prefix: string | null;
+  number: string | null;
 }
 
 const CollectorRolesList = () => {
@@ -44,7 +49,7 @@ const CollectorRolesList = () => {
       try {
         const { data: activeCollectors, error: collectorsError } = await supabase
           .from('members_collectors')
-          .select('member_number, name')
+          .select('member_number, name, email, phone, active, prefix, number')
           .eq('active', true);
 
         if (collectorsError) {
@@ -87,7 +92,12 @@ const CollectorRolesList = () => {
                 role_details: roles?.map(r => ({
                   role: r.role,
                   created_at: r.created_at
-                })) || []
+                })) || [],
+                email: collector.email,
+                phone: collector.phone,
+                active: collector.active,
+                prefix: collector.prefix,
+                number: collector.number
               };
             } catch (err) {
               console.error('Error processing collector:', collector.member_number, err);
@@ -148,6 +158,10 @@ const CollectorRolesList = () => {
             <TableRow className="border-dashboard-cardBorder hover:bg-dashboard-card/50">
               <TableHead className="text-[#F2FCE2]">Collector</TableHead>
               <TableHead className="text-[#F2FCE2]">Member #</TableHead>
+              <TableHead className="text-[#F2FCE2]">Email</TableHead>
+              <TableHead className="text-[#F2FCE2]">Phone</TableHead>
+              <TableHead className="text-[#F2FCE2]">Prefix</TableHead>
+              <TableHead className="text-[#F2FCE2]">Number</TableHead>
               <TableHead className="text-[#F2FCE2]">Roles</TableHead>
               <TableHead className="text-[#F2FCE2]">Role Added</TableHead>
               <TableHead className="text-[#F2FCE2]">Status</TableHead>
@@ -166,6 +180,10 @@ const CollectorRolesList = () => {
                   </div>
                 </TableCell>
                 <TableCell className="text-[#D6BCFA]">{collector.member_number}</TableCell>
+                <TableCell className="text-[#F3F3F3]">{collector.email || '-'}</TableCell>
+                <TableCell className="text-[#F3F3F3]">{collector.phone || '-'}</TableCell>
+                <TableCell className="text-[#F3F3F3]">{collector.prefix || '-'}</TableCell>
+                <TableCell className="text-[#F3F3F3]">{collector.number || '-'}</TableCell>
                 <TableCell>
                   <div className="flex gap-1 flex-wrap">
                     {collector.roles.map((role, idx) => (
@@ -186,9 +204,9 @@ const CollectorRolesList = () => {
                 <TableCell>
                   <Badge 
                     variant="outline" 
-                    className="bg-green-500/20 text-green-400"
+                    className={collector.active ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"}
                   >
-                    Active
+                    {collector.active ? 'Active' : 'Inactive'}
                   </Badge>
                 </TableCell>
               </TableRow>
