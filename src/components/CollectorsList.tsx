@@ -1,37 +1,22 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
-import { Database } from '@/integrations/supabase/types';
-import { UserCheck, Users, RefreshCw, Shield } from 'lucide-react';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Users } from 'lucide-react';
+import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useToast } from "@/hooks/use-toast";
-import CollectorMembers from "@/components/CollectorMembers";
 import PrintButtons from "@/components/PrintButtons";
 import { useState } from 'react';
 import PaginationControls from './ui/pagination/PaginationControls';
 import { Collector } from '@/types/collector';
-
-type MemberCollector = Database['public']['Tables']['members_collectors']['Row'];
-type Member = Database['public']['Tables']['members']['Row'];
-type UserRole = Database['public']['Enums']['app_role'];
+import CollectorAccordionItem from './collectors/CollectorAccordionItem';
+import { useCollectorSync } from '@/hooks/useCollectorSync';
+import { useCollectorRoles } from '@/hooks/useCollectorRoles';
 
 const ITEMS_PER_PAGE = 10;
 
 const CollectorsList = () => {
   const [page, setPage] = useState(1);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const syncRolesMutation = useCollectorSync();
+  const { updateRoleMutation, updateEnhancedRoleMutation } = useCollectorRoles();
 
   const { data: allMembers } = useQuery({
     queryKey: ['all_members'],
@@ -42,7 +27,7 @@ const CollectorsList = () => {
         .order('member_number', { ascending: true });
       
       if (error) throw error;
-      return data as Member[];
+      return data;
     },
   });
 
@@ -83,17 +68,9 @@ const CollectorsList = () => {
           .select('*', { count: 'exact', head: true })
           .eq('collector', collector.name);
 
-        // Fetch sync status, but handle the case where it doesn't exist
-        const { data: syncStatus } = await supabase
-          .from('sync_status')
-          .select('*')
-          .eq('user_id', collector.member_number)
-          .maybeSingle();
-
         return {
           ...collector,
-          memberCount: count || 0,
-          syncStatus: syncStatus || { status: 'pending', store_status: 'ready' }
+          memberCount: count || 0
         };
       }));
 
@@ -102,101 +79,6 @@ const CollectorsList = () => {
         count: count || 0
       };
     },
-  });
-
-  const updateRoleMutation = useMutation({
-    mutationFn: async ({ userId, role, action }: { userId: string; role: UserRole; action: 'add' | 'remove' }) => {
-      if (!userId) {
-        throw new Error('User ID is required');
-      }
-
-      if (action === 'add') {
-        const { error } = await supabase
-          .from('user_roles')
-          .insert({ user_id: userId, role });
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('user_roles')
-          .delete()
-          .eq('user_id', userId)
-          .eq('role', role);
-        if (error) throw error;
-      }
-    },
-    meta: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['members_collectors'] });
-        toast({
-          title: "Role updated",
-          description: "The collector's roles have been updated successfully.",
-        });
-      },
-      onError: (error: Error) => {
-        toast({
-          title: "Error updating role",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-    }
-  });
-
-  const updateEnhancedRoleMutation = useMutation({
-    mutationFn: async ({ userId, roleName, isActive }: { userId: string; roleName: string; isActive: boolean }) => {
-      if (!userId) {
-        throw new Error('User ID is required');
-      }
-
-      const { error } = await supabase
-        .from('enhanced_roles')
-        .upsert({
-          user_id: userId,
-          role_name: roleName,
-          is_active: isActive,
-          updated_by: (await supabase.auth.getUser()).data.user?.id
-        });
-      if (error) throw error;
-    },
-    meta: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['members_collectors'] });
-        toast({
-          title: "Enhanced role updated",
-          description: "The enhanced role status has been updated.",
-        });
-      },
-      onError: (error: Error) => {
-        toast({
-          title: "Error updating enhanced role",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-    }
-  });
-
-  const syncRolesMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.rpc('perform_user_roles_sync');
-      if (error) throw error;
-    },
-    meta: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['members_collectors'] });
-        toast({
-          title: "Roles synchronized",
-          description: "The roles have been synchronized successfully.",
-        });
-      },
-      onError: (error: Error) => {
-        toast({
-          title: "Error syncing roles",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-    }
   });
 
   const collectors = paymentsData?.data || [];
@@ -214,92 +96,15 @@ const CollectorsList = () => {
 
       <Accordion type="single" collapsible className="space-y-4">
         {collectors.map((collector) => (          
-          <AccordionItem
+          <CollectorAccordionItem
             key={collector.id}
-            value={collector.id}
-            className="bg-dashboard-card border border-white/10 rounded-lg overflow-hidden"
-          >
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-dashboard-accent1 flex items-center justify-center text-white font-medium">
-                    {collector.prefix}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-white">{collector.name}</p>
-                      <span className="text-sm text-gray-400">#{collector.number}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-dashboard-text">
-                      <UserCheck className="w-4 h-4" />
-                      <span>Collector</span>
-                      <span className="text-purple-400">({collector.memberCount} members)</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <Shield className="w-4 h-4 mr-2" />
-                        Manage Roles
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuItem
-                        onClick={() => updateRoleMutation.mutate({
-                          userId: collector.member_number || '',
-                          role: 'collector',
-                          action: 'add'
-                        })}
-                      >
-                        Add Collector Role
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => updateEnhancedRoleMutation.mutate({
-                          userId: collector.member_number || '',
-                          roleName: 'enhanced_collector',
-                          isActive: true
-                        })}
-                      >
-                        Enable Enhanced Role
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => syncRolesMutation.mutate()}
-                    disabled={syncRolesMutation.isPending}
-                  >
-                    <RefreshCw className={`w-4 h-4 mr-2 ${
-                      syncRolesMutation.isPending ? 'animate-spin' : ''
-                    }`} />
-                    Sync
-                  </Button>
-
-                  <PrintButtons collectorName={collector.name || ''} />
-                  <div className={`px-3 py-1 rounded-full ${
-                    collector.active 
-                      ? 'bg-green-500/20 text-green-400' 
-                      : 'bg-gray-500/20 text-gray-400'
-                  }`}>
-                    {collector.active ? 'Active' : 'Inactive'}
-                  </div>
-                </div>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="space-y-3 mt-2">
-                {collector.memberCount > 0 ? (
-                  <CollectorMembers collectorName={collector.name || ''} />
-                ) : (
-                  <p className="text-sm text-gray-400">No members assigned to this collector</p>
-                )}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
+            collector={collector}
+            onRoleUpdate={(userId, role, action) => updateRoleMutation.mutate({ userId, role, action })}
+            onEnhancedRoleUpdate={(userId, roleName, isActive) => 
+              updateEnhancedRoleMutation.mutate({ userId, roleName, isActive })}
+            onSync={() => syncRolesMutation.mutate()}
+            isSyncing={syncRolesMutation.isPending}
+          />
         ))}
       </Accordion>
 
