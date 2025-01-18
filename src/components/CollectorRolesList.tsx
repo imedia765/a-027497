@@ -159,6 +159,8 @@ const CollectorRolesList = () => {
               <TableHead className="text-[#F2FCE2]">Contact Info</TableHead>
               <TableHead className="text-[#F2FCE2]">Roles & Access</TableHead>
               <TableHead className="text-[#F2FCE2]">Role History</TableHead>
+              <TableHead className="text-[#F2FCE2]">Enhanced Role Status</TableHead>
+              <TableHead className="text-[#F2FCE2]">Role Store Status</TableHead>
               <TableHead className="text-[#F2FCE2]">Sync Status</TableHead>
               <TableHead className="text-[#F2FCE2]">Permissions</TableHead>
             </TableRow>
@@ -194,7 +196,7 @@ const CollectorRolesList = () => {
                         <Badge 
                           key={`${role}-${idx}`}
                           variant="outline"
-                          className="bg-[#9B87F5]/10 text-[#D6BCFA] border-[#9B87F5]/20"
+                          className="bg-[#9B87F5] text-white border-0"
                         >
                           {role}
                         </Badge>
@@ -215,11 +217,51 @@ const CollectorRolesList = () => {
                   </div>
                 </TableCell>
                 <TableCell>
+                  <div className="flex flex-col gap-2">
+                    <div className="text-sm">
+                      <span className="text-[#9B87F5]">Query Status: </span>
+                      <Badge variant="outline" className="bg-[#7EBF8E] text-white border-0">
+                        Ready
+                      </Badge>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-[#9B87F5]">Enhanced Roles: </span>
+                      <div className="flex gap-1 mt-1">
+                        {enhancedRoles?.map((role, idx) => (
+                          <Badge 
+                            key={idx}
+                            variant="outline"
+                            className="bg-[#9B87F5] text-white border-0"
+                          >
+                            {role}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-2">
+                    <div className="text-sm">
+                      <span className="text-[#9B87F5]">Store Status: </span>
+                      <Badge variant="outline" className="bg-[#7EBF8E] text-white border-0">
+                        Ready
+                      </Badge>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-[#9B87F5]">Store Error: </span>
+                      <Badge variant="outline" className="bg-[#7EBF8E] text-white border-0">
+                        None
+                      </Badge>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
                   <div className="flex items-center gap-2">
                     {syncStatus ? (
-                      <Check className="h-4 w-4 text-green-500" />
+                      <Check className="h-4 w-4 text-[#7EBF8E]" />
                     ) : (
-                      <Clock className="h-4 w-4 text-yellow-500" />
+                      <Clock className="h-4 w-4 text-[#FFD700]" />
                     )}
                     <span className="text-sm">
                       {syncStatus ? 'Synced' : 'Pending'}
@@ -232,7 +274,7 @@ const CollectorRolesList = () => {
                       <Badge 
                         key={key}
                         variant="outline" 
-                        className={`${value ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
+                        className={value ? 'bg-[#7EBF8E] text-white border-0' : 'bg-[#8E9196] text-white border-0'}
                       >
                         {key}
                       </Badge>
