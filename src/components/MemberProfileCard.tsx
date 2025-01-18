@@ -38,7 +38,7 @@ const MemberProfileCard = ({ memberProfile }: MemberProfileCardProps) => {
         .from('members_collectors')
         .select('id, name, phone, prefix, number, email, active, created_at, updated_at, member_number')
         .eq('name', memberProfile.collector)
-        .single();
+        .maybeSingle();
         
       if (error) throw error;
       return data as Collector;

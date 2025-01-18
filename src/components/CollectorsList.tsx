@@ -65,8 +65,7 @@ const CollectorsList = () => {
           active,
           created_at,
           updated_at,
-          member_number,
-          auth_user_id
+          member_number
         `, { count: 'exact' })
         .order('number', { ascending: true })
         .range(from, to);
@@ -170,7 +169,7 @@ const CollectorsList = () => {
   });
 
   const syncRolesMutation = useMutation({
-    mutationFn: async (userId: string) => {
+    mutationFn: async () => {
       const { error } = await supabase.rpc('perform_user_roles_sync');
       if (error) throw error;
     },
@@ -240,8 +239,8 @@ const CollectorsList = () => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
                       <DropdownMenuItem
-                        onClick={() => collector.auth_user_id && updateRoleMutation.mutate({
-                          userId: collector.auth_user_id,
+                        onClick={() => updateRoleMutation.mutate({
+                          userId: collector.member_number || '',
                           role: 'collector',
                           action: 'add'
                         })}
@@ -249,8 +248,8 @@ const CollectorsList = () => {
                         Add Collector Role
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => collector.auth_user_id && updateEnhancedRoleMutation.mutate({
-                          userId: collector.auth_user_id,
+                        onClick={() => updateEnhancedRoleMutation.mutate({
+                          userId: collector.member_number || '',
                           roleName: 'enhanced_collector',
                           isActive: true
                         })}
@@ -263,8 +262,8 @@ const CollectorsList = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => collector.auth_user_id && syncRolesMutation.mutate(collector.auth_user_id)}
-                    disabled={syncRolesMutation.isPending || !collector.auth_user_id}
+                    onClick={() => syncRolesMutation.mutate()}
+                    disabled={syncRolesMutation.isPending}
                   >
                     <RefreshCw className={`w-4 h-4 mr-2 ${
                       syncRolesMutation.isPending ? 'animate-spin' : ''
