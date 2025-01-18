@@ -8,4 +8,7 @@ export interface Collector {
   active: boolean;
   created_at: string;
   updated_at: string;
+  member_number: string | null;
+  auth_user_id?: string | null;
+  memberCount?: number;
 }

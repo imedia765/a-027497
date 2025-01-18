@@ -20,6 +20,7 @@ import CollectorMembers from "@/components/CollectorMembers";
 import PrintButtons from "@/components/PrintButtons";
 import { useState } from 'react';
 import PaginationControls from './ui/pagination/PaginationControls';
+import { Collector } from '@/types/collector';
 
 type MemberCollector = Database['public']['Tables']['members_collectors']['Row'];
 type Member = Database['public']['Tables']['members']['Row'];
@@ -64,7 +65,8 @@ const CollectorsList = () => {
           active,
           created_at,
           updated_at,
-          member_number
+          member_number,
+          auth_user_id
         `, { count: 'exact' })
         .order('number', { ascending: true })
         .range(from, to);
@@ -89,7 +91,7 @@ const CollectorsList = () => {
       }));
 
       return {
-        data: collectorsWithCounts,
+        data: collectorsWithCounts as Collector[],
         count: count || 0
       };
     },
@@ -97,6 +99,10 @@ const CollectorsList = () => {
 
   const updateRoleMutation = useMutation({
     mutationFn: async ({ userId, role, action }: { userId: string; role: UserRole; action: 'add' | 'remove' }) => {
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+
       if (action === 'add') {
         const { error } = await supabase
           .from('user_roles')
@@ -131,6 +137,10 @@ const CollectorsList = () => {
 
   const updateEnhancedRoleMutation = useMutation({
     mutationFn: async ({ userId, roleName, isActive }: { userId: string; roleName: string; isActive: boolean }) => {
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+
       const { error } = await supabase
         .from('enhanced_roles')
         .upsert({
@@ -230,7 +240,7 @@ const CollectorsList = () => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
                       <DropdownMenuItem
-                        onClick={() => updateRoleMutation.mutate({
+                        onClick={() => collector.auth_user_id && updateRoleMutation.mutate({
                           userId: collector.auth_user_id,
                           role: 'collector',
                           action: 'add'
@@ -239,7 +249,7 @@ const CollectorsList = () => {
                         Add Collector Role
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => updateEnhancedRoleMutation.mutate({
+                        onClick={() => collector.auth_user_id && updateEnhancedRoleMutation.mutate({
                           userId: collector.auth_user_id,
                           roleName: 'enhanced_collector',
                           isActive: true
@@ -253,8 +263,8 @@ const CollectorsList = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => syncRolesMutation.mutate(collector.auth_user_id)}
-                    disabled={syncRolesMutation.isPending}
+                    onClick={() => collector.auth_user_id && syncRolesMutation.mutate(collector.auth_user_id)}
+                    disabled={syncRolesMutation.isPending || !collector.auth_user_id}
                   >
                     <RefreshCw className={`w-4 h-4 mr-2 ${
                       syncRolesMutation.isPending ? 'animate-spin' : ''
