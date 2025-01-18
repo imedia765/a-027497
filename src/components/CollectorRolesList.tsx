@@ -65,36 +65,47 @@ const CollectorRolesList = () => {
                 .from('members')
                 .select('full_name, member_number, auth_user_id')
                 .eq('member_number', collector.member_number)
-                .single();
+                .maybeSingle();
 
               if (memberError) {
                 console.error('Error fetching member data:', memberError);
                 throw memberError;
               }
 
+              if (!memberData) {
+                console.log(`No member found for collector ${collector.name}`);
+                return null;
+              }
+
               // Fetch enhanced roles
               const { data: enhancedRoles, error: enhancedError } = await supabase
                 .from('enhanced_roles')
                 .select('role_name, is_active, created_at')
-                .eq('user_id', memberData.auth_user_id)
-                .order('created_at', { ascending: true });
+                .eq('user_id', memberData.auth_user_id);
 
               if (enhancedError) {
                 console.error('Error fetching enhanced roles:', enhancedError);
                 throw enhancedError;
               }
 
-              // Fetch sync status
+              // Fetch sync status with maybeSingle() and default values
               const { data: syncData, error: syncError } = await supabase
                 .from('sync_status')
                 .select('*')
                 .eq('user_id', memberData.auth_user_id)
-                .single();
+                .maybeSingle();
 
               if (syncError && syncError.code !== 'PGRST116') {
                 console.error('Error fetching sync status:', syncError);
                 throw syncError;
               }
+
+              // Create default sync status if none exists
+              const defaultSyncStatus = {
+                status: 'pending',
+                store_status: 'ready',
+                last_attempted_sync_at: new Date().toISOString()
+              };
 
               const { data: roles, error: rolesError } = await supabase
                 .from('user_roles')
@@ -115,7 +126,7 @@ const CollectorRolesList = () => {
                   created_at: r.created_at
                 })) || [],
                 enhanced_roles: enhancedRoles || [],
-                sync_status: syncData,
+                sync_status: syncData || defaultSyncStatus,
                 email: collector.email,
                 phone: collector.phone,
                 prefix: collector.prefix,
