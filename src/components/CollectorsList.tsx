@@ -107,7 +107,7 @@ const CollectorsList = () => {
   const collectors = paymentsData?.data || [];
   const totalPages = Math.ceil((paymentsData?.count || 0) / ITEMS_PER_PAGE);
 
-  const handleRoleUpdate = async (collector: Collector & { roles: UserRole[] }, role: UserRole, action: 'add' | 'remove') => {
+  const handleRoleUpdate = async (collector: Collector & { roles: UserRole[] }, role: 'collector', action: 'add' | 'remove') => {
     try {
       await updateRoleMutation.mutateAsync({ 
         userId: collector.member_number || '', 
@@ -144,7 +144,7 @@ const CollectorsList = () => {
           <CollectorAccordionItem
             key={collector.id}
             collector={collector}
-            onRoleUpdate={(userId, role, action) => updateRoleMutation.mutate({ userId, role, action })}
+            onRoleUpdate={(userId, role, action) => updateRoleMutation.mutate({ userId, role: 'collector', action })}
             onEnhancedRoleUpdate={(userId, roleName, isActive) => 
               updateEnhancedRoleMutation.mutate({ userId, roleName, isActive })}
             onSync={() => syncRolesMutation.mutate()}
@@ -152,7 +152,7 @@ const CollectorsList = () => {
             roleManagementDropdown={
               <RoleManagementDropdown
                 currentRoles={collector.roles}
-                onRoleUpdate={(role, action) => handleRoleUpdate(collector, role, action)}
+                onRoleUpdate={(role, action) => handleRoleUpdate(collector, 'collector', action)}
                 disabled={updateRoleMutation.isPending}
               />
             }
