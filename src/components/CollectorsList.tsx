@@ -1,13 +1,21 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from '@/integrations/supabase/types';
-import { UserCheck, Users } from 'lucide-react';
+import { UserCheck, Users, RefreshCw, Shield } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 import CollectorMembers from "@/components/CollectorMembers";
 import PrintButtons from "@/components/PrintButtons";
 import { useState } from 'react';
@@ -15,11 +23,14 @@ import PaginationControls from './ui/pagination/PaginationControls';
 
 type MemberCollector = Database['public']['Tables']['members_collectors']['Row'];
 type Member = Database['public']['Tables']['members']['Row'];
+type UserRole = Database['public']['Enums']['app_role'];
 
 const ITEMS_PER_PAGE = 10;
 
 const CollectorsList = () => {
   const [page, setPage] = useState(1);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: allMembers } = useQuery({
     queryKey: ['all_members'],
@@ -41,7 +52,6 @@ const CollectorsList = () => {
       const from = (page - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
-      // Get paginated collectors data with count
       const { data: collectorsData, error: collectorsError, count } = await supabase
         .from('members_collectors')
         .select(`
@@ -85,6 +95,93 @@ const CollectorsList = () => {
     },
   });
 
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ userId, role, action }: { userId: string; role: UserRole; action: 'add' | 'remove' }) => {
+      if (action === 'add') {
+        const { error } = await supabase
+          .from('user_roles')
+          .insert({ user_id: userId, role });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('user_roles')
+          .delete()
+          .eq('user_id', userId)
+          .eq('role', role);
+        if (error) throw error;
+      }
+    },
+    meta: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['members_collectors'] });
+        toast({
+          title: "Role updated",
+          description: "The collector's roles have been updated successfully.",
+        });
+      },
+      onError: (error: Error) => {
+        toast({
+          title: "Error updating role",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    }
+  });
+
+  const updateEnhancedRoleMutation = useMutation({
+    mutationFn: async ({ userId, roleName, isActive }: { userId: string; roleName: string; isActive: boolean }) => {
+      const { error } = await supabase
+        .from('enhanced_roles')
+        .upsert({
+          user_id: userId,
+          role_name: roleName,
+          is_active: isActive,
+          updated_by: (await supabase.auth.getUser()).data.user?.id
+        });
+      if (error) throw error;
+    },
+    meta: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['members_collectors'] });
+        toast({
+          title: "Enhanced role updated",
+          description: "The enhanced role status has been updated.",
+        });
+      },
+      onError: (error: Error) => {
+        toast({
+          title: "Error updating enhanced role",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    }
+  });
+
+  const syncRolesMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.rpc('perform_user_roles_sync');
+      if (error) throw error;
+    },
+    meta: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['members_collectors'] });
+        toast({
+          title: "Roles synchronized",
+          description: "The roles have been synchronized successfully.",
+        });
+      },
+      onError: (error: Error) => {
+        toast({
+          title: "Error syncing roles",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    }
+  });
+
   const collectors = paymentsData?.data || [];
   const totalPages = Math.ceil((paymentsData?.count || 0) / ITEMS_PER_PAGE);
 
@@ -124,6 +221,47 @@ const CollectorsList = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <Shield className="w-4 h-4 mr-2" />
+                        Manage Roles
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuItem
+                        onClick={() => updateRoleMutation.mutate({
+                          userId: collector.auth_user_id,
+                          role: 'collector',
+                          action: 'add'
+                        })}
+                      >
+                        Add Collector Role
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => updateEnhancedRoleMutation.mutate({
+                          userId: collector.auth_user_id,
+                          roleName: 'enhanced_collector',
+                          isActive: true
+                        })}
+                      >
+                        Enable Enhanced Role
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => syncRolesMutation.mutate(collector.auth_user_id)}
+                    disabled={syncRolesMutation.isPending}
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${
+                      syncRolesMutation.isPending ? 'animate-spin' : ''
+                    }`} />
+                    Sync
+                  </Button>
+
                   <PrintButtons collectorName={collector.name || ''} />
                   <div className={`px-3 py-1 rounded-full ${
                     collector.active 
