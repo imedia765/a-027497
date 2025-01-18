@@ -10,6 +10,11 @@ import { Collector } from '@/types/collector';
 import CollectorAccordionItem from './collectors/CollectorAccordionItem';
 import { useCollectorSync } from '@/hooks/useCollectorSync';
 import { useCollectorRoles } from '@/hooks/useCollectorRoles';
+import RoleManagementDropdown from './collectors/RoleManagementDropdown';
+import { Database } from "@/integrations/supabase/types";
+import { useToast } from "@/hooks/use-toast";
+
+type UserRole = Database['public']['Enums']['app_role'];
 
 const ITEMS_PER_PAGE = 10;
 
@@ -17,6 +22,7 @@ const CollectorsList = () => {
   const [page, setPage] = useState(1);
   const syncRolesMutation = useCollectorSync();
   const { updateRoleMutation, updateEnhancedRoleMutation } = useCollectorRoles();
+  const { toast } = useToast();
 
   const { data: allMembers } = useQuery({
     queryKey: ['all_members'],
@@ -68,14 +74,31 @@ const CollectorsList = () => {
           .select('*', { count: 'exact', head: true })
           .eq('collector', collector.name);
 
+        // Fetch user roles for this collector
+        const { data: memberData } = await supabase
+          .from('members')
+          .select('auth_user_id')
+          .eq('member_number', collector.member_number)
+          .single();
+
+        let roles: UserRole[] = [];
+        if (memberData?.auth_user_id) {
+          const { data: rolesData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', memberData.auth_user_id);
+          roles = rolesData?.map(r => r.role as UserRole) || [];
+        }
+
         return {
           ...collector,
-          memberCount: count || 0
+          memberCount: count || 0,
+          roles
         };
       }));
 
       return {
-        data: collectorsWithCounts as Collector[],
+        data: collectorsWithCounts as (Collector & { roles: UserRole[] })[],
         count: count || 0
       };
     },
@@ -83,6 +106,28 @@ const CollectorsList = () => {
 
   const collectors = paymentsData?.data || [];
   const totalPages = Math.ceil((paymentsData?.count || 0) / ITEMS_PER_PAGE);
+
+  const handleRoleUpdate = async (collector: Collector & { roles: UserRole[] }, role: UserRole, action: 'add' | 'remove') => {
+    try {
+      await updateRoleMutation.mutateAsync({ 
+        userId: collector.member_number || '', 
+        role, 
+        action 
+      });
+      
+      toast({
+        title: "Role updated",
+        description: `Successfully ${action}ed ${role} role for ${collector.name}`,
+      });
+    } catch (error) {
+      console.error('Error updating role:', error);
+      toast({
+        title: "Error updating role",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (collectorsLoading) return <div className="text-center py-4">Loading collectors...</div>;
   if (collectorsError) return <div className="text-center py-4 text-red-500">Error loading collectors: {collectorsError.message}</div>;
@@ -104,6 +149,13 @@ const CollectorsList = () => {
               updateEnhancedRoleMutation.mutate({ userId, roleName, isActive })}
             onSync={() => syncRolesMutation.mutate()}
             isSyncing={syncRolesMutation.isPending}
+            roleManagementDropdown={
+              <RoleManagementDropdown
+                currentRoles={collector.roles}
+                onRoleUpdate={(role, action) => handleRoleUpdate(collector, role, action)}
+                disabled={updateRoleMutation.isPending}
+              />
+            }
           />
         ))}
       </Accordion>
