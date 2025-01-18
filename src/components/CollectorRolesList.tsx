@@ -72,6 +72,30 @@ const CollectorRolesList = () => {
                 throw memberError;
               }
 
+              // Fetch enhanced roles
+              const { data: enhancedRoles, error: enhancedError } = await supabase
+                .from('enhanced_roles')
+                .select('role_name, is_active, created_at')
+                .eq('user_id', memberData.auth_user_id)
+                .order('created_at', { ascending: true });
+
+              if (enhancedError) {
+                console.error('Error fetching enhanced roles:', enhancedError);
+                throw enhancedError;
+              }
+
+              // Fetch sync status
+              const { data: syncData, error: syncError } = await supabase
+                .from('sync_status')
+                .select('*')
+                .eq('user_id', memberData.auth_user_id)
+                .single();
+
+              if (syncError && syncError.code !== 'PGRST116') {
+                console.error('Error fetching sync status:', syncError);
+                throw syncError;
+              }
+
               const { data: roles, error: rolesError } = await supabase
                 .from('user_roles')
                 .select('role, created_at')
@@ -84,14 +108,14 @@ const CollectorRolesList = () => {
               }
 
               return {
-                full_name: memberData.full_name,
-                member_number: memberData.member_number,
-                auth_user_id: memberData.auth_user_id,
+                ...memberData,
                 roles: roles?.map(r => r.role) || [],
                 role_details: roles?.map(r => ({
                   role: r.role,
                   created_at: r.created_at
                 })) || [],
+                enhanced_roles: enhancedRoles || [],
+                sync_status: syncData,
                 email: collector.email,
                 phone: collector.phone,
                 prefix: collector.prefix,
@@ -218,53 +242,52 @@ const CollectorRolesList = () => {
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col gap-2">
-                    <div className="text-sm">
-                      <span className="text-[#9B87F5]">Query Status: </span>
-                      <Badge variant="outline" className="bg-[#7EBF8E] text-white border-0">
-                        Ready
+                    {collector.enhanced_roles?.map((role, idx) => (
+                      <Badge 
+                        key={idx}
+                        variant="outline"
+                        className={`${
+                          role.is_active 
+                            ? 'bg-[#7EBF8E] text-white' 
+                            : 'bg-[#8E9196] text-white'
+                        } border-0`}
+                      >
+                        {role.role_name}
                       </Badge>
-                    </div>
-                    <div className="text-sm">
-                      <span className="text-[#9B87F5]">Enhanced Roles: </span>
-                      <div className="flex gap-1 mt-1">
-                        {enhancedRoles?.map((role, idx) => (
-                          <Badge 
-                            key={idx}
-                            variant="outline"
-                            className="bg-[#9B87F5] text-white border-0"
-                          >
-                            {role}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col gap-2">
                     <div className="text-sm">
                       <span className="text-[#9B87F5]">Store Status: </span>
-                      <Badge variant="outline" className="bg-[#7EBF8E] text-white border-0">
-                        Ready
+                      <Badge variant="outline" className={`
+                        ${collector.sync_status?.store_status === 'ready' 
+                          ? 'bg-[#7EBF8E]' 
+                          : 'bg-[#8E9196]'
+                        } text-white border-0`}
+                      >
+                        {collector.sync_status?.store_status || 'N/A'}
                       </Badge>
                     </div>
-                    <div className="text-sm">
-                      <span className="text-[#9B87F5]">Store Error: </span>
-                      <Badge variant="outline" className="bg-[#7EBF8E] text-white border-0">
-                        None
-                      </Badge>
-                    </div>
+                    {collector.sync_status?.store_error && (
+                      <div className="text-sm text-red-400">
+                        Error: {collector.sync_status.store_error}
+                      </div>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    {syncStatus ? (
+                    {collector.sync_status?.status === 'completed' ? (
                       <Check className="h-4 w-4 text-[#7EBF8E]" />
-                    ) : (
+                    ) : collector.sync_status?.status === 'pending' ? (
                       <Clock className="h-4 w-4 text-[#FFD700]" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-400" />
                     )}
                     <span className="text-sm">
-                      {syncStatus ? 'Synced' : 'Pending'}
+                      {collector.sync_status?.status || 'N/A'}
                     </span>
                   </div>
                 </TableCell>
