@@ -83,9 +83,17 @@ const CollectorsList = () => {
           .select('*', { count: 'exact', head: true })
           .eq('collector', collector.name);
 
+        // Fetch sync status, but handle the case where it doesn't exist
+        const { data: syncStatus } = await supabase
+          .from('sync_status')
+          .select('*')
+          .eq('user_id', collector.member_number)
+          .maybeSingle();
+
         return {
           ...collector,
-          memberCount: count || 0
+          memberCount: count || 0,
+          syncStatus: syncStatus || { status: 'pending', store_status: 'ready' }
         };
       }));
 
