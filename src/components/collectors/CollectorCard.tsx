@@ -9,10 +9,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Collector } from '@/types/collector';
 import PrintButtons from "@/components/PrintButtons";
+import { Database } from "@/integrations/supabase/types";
+
+type UserRole = Database['public']['Enums']['app_role'];
 
 interface CollectorCardProps {
   collector: Collector;
-  onRoleUpdate: (userId: string, role: 'collector', action: 'add' | 'remove') => void;
+  onRoleUpdate: (userId: string, role: UserRole, action: 'add' | 'remove') => void;
   onEnhancedRoleUpdate: (userId: string, roleName: string, isActive: boolean) => void;
   onSync: () => void;
   isSyncing: boolean;
