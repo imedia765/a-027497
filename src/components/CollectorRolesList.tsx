@@ -104,7 +104,8 @@ const CollectorRolesList = () => {
               const defaultSyncStatus = {
                 status: 'pending',
                 store_status: 'ready',
-                last_attempted_sync_at: new Date().toISOString()
+                last_attempted_sync_at: new Date().toISOString(),
+                store_error: null // Add the missing property
               };
 
               const { data: roles, error: rolesError } = await supabase
