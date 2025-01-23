@@ -102,14 +102,14 @@ const ChangePasswordDialog = ({
       const { data, error } = await supabase.rpc('handle_password_reset', {
         member_number: memberNumber,
         new_password: values.newPassword,
-        current_password: isFirstTimeLogin ? undefined : values.currentPassword,
         ip_address: window.location.hostname,
         user_agent: navigator.userAgent,
         client_info: JSON.stringify({
           platform: navigator.platform,
           language: navigator.language,
           timestamp: new Date().toISOString(),
-          isFirstTimeLogin
+          isFirstTimeLogin,
+          currentPassword: isFirstTimeLogin ? undefined : values.currentPassword
         })
       });
 
