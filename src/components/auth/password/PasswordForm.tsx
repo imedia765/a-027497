@@ -17,6 +17,41 @@ import { toast } from "sonner";
 
 // Base password validation schema
 const basePasswordFields = {
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
+  confirmPassword: z.string()
+};
+
+Let's add the `currentPassword` field to both the first-time login and password change forms. I'll modify the `PasswordForm` component to include this field in both scenarios.
+
+<lov-code>
+Let's update the PasswordForm component to include the currentPassword field:
+
+<lov-write file_path="src/components/auth/password/PasswordForm.tsx">
+import * as React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Lock } from "lucide-react";
+import { toast } from "sonner";
+
+// Base password validation schema
+const basePasswordFields = {
+  currentPassword: z.string().min(1, "Current password is required"),
   newPassword: z.string()
     .min(8, "Password must be at least 8 characters")
     .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
@@ -32,10 +67,7 @@ const firstTimeSchema = z.object(basePasswordFields).refine((data) => data.newPa
 });
 
 // Subsequent login schema
-const subsequentSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required"),
-  ...basePasswordFields,
-}).refine((data) => data.newPassword === data.confirmPassword, {
+const subsequentSchema = z.object(basePasswordFields).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
@@ -61,10 +93,7 @@ export const PasswordForm = ({
   
   const form = useForm<FirstTimeFormValues | SubsequentFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: isFirstTimeLogin ? {
-      newPassword: "",
-      confirmPassword: "",
-    } : {
+    defaultValues: {
       currentPassword: "",
       newPassword: "",
       confirmPassword: "",
@@ -83,12 +112,12 @@ export const PasswordForm = ({
     try {
       console.log("[PasswordForm] Submitting form:", {
         isFirstTimeLogin,
-        hasCurrentPassword: !isFirstTimeLogin && 'currentPassword' in values,
+        hasCurrentPassword: 'currentPassword' in values,
         values,
         timestamp: new Date().toISOString()
       });
 
-      if (!isFirstTimeLogin && !('currentPassword' in values)) {
+      if (!values.currentPassword) {
         toast.error("Current password is required");
         return;
       }
@@ -113,25 +142,23 @@ export const PasswordForm = ({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
-        {!isFirstTimeLogin && (
-          <FormField
-            control={form.control}
-            name="currentPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-dashboard-text">Current Password</FormLabel>
-                <FormControl>
-                  <Input 
-                    {...field} 
-                    type="password"
-                    className="bg-dashboard-dark border-dashboard-cardBorder text-dashboard-text focus:border-dashboard-accent1" 
-                  />
-                </FormControl>
-                <FormMessage className="text-red-500" />
-              </FormItem>
-            )}
-          />
-        )}
+        <FormField
+          control={form.control}
+          name="currentPassword"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-dashboard-text">Current Password</FormLabel>
+              <FormControl>
+                <Input 
+                  {...field} 
+                  type="password"
+                  className="bg-dashboard-dark border-dashboard-cardBorder text-dashboard-text focus:border-dashboard-accent1" 
+                />
+              </FormControl>
+              <FormMessage className="text-red-500" />
+            </FormItem>
+          )}
+        />
         
         <FormField
           control={form.control}
