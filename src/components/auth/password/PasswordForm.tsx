@@ -14,32 +14,36 @@ import { Button } from "@/components/ui/button";
 import { Lock } from "lucide-react";
 
 // Base password validation schema
-const passwordValidation = z.object({
+const basePasswordFields = {
   newPassword: z.string()
     .min(8, "Password must be at least 8 characters")
     .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
     .regex(/[a-z]/, "Password must contain at least one lowercase letter")
     .regex(/[0-9]/, "Password must contain at least one number"),
   confirmPassword: z.string()
-});
+};
 
 // First time login schema
-const firstTimeSchema = passwordValidation.refine((data) => data.newPassword === data.confirmPassword, {
+const firstTimeSchema = z.object(basePasswordFields).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
 
 // Subsequent login schema
 const subsequentSchema = z.object({
+  ...basePasswordFields,
   currentPassword: z.string().min(1, "Current password is required"),
-  ...passwordValidation.shape
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
 
+// Define types based on the schemas
+type FirstTimeFormValues = z.infer<typeof firstTimeSchema>;
+type SubsequentFormValues = z.infer<typeof subsequentSchema>;
+
 interface PasswordFormProps {
-  onSubmit: (values: any) => Promise<void>;
+  onSubmit: (values: FirstTimeFormValues | SubsequentFormValues) => Promise<void>;
   isSubmitting: boolean;
   isFirstTimeLogin: boolean;
   onCancel: () => void;
@@ -53,12 +57,12 @@ export const PasswordForm = ({
 }: PasswordFormProps) => {
   const formSchema = isFirstTimeLogin ? firstTimeSchema : subsequentSchema;
   
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FirstTimeFormValues | SubsequentFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      currentPassword: "",
       newPassword: "",
       confirmPassword: "",
+      ...(isFirstTimeLogin ? {} : { currentPassword: "" }),
     },
   });
 
@@ -70,9 +74,9 @@ export const PasswordForm = ({
     timestamp: new Date().toISOString()
   });
 
-  const handleFormSubmit = async (values: z.infer<typeof formSchema>) => {
+  const handleFormSubmit = async (values: FirstTimeFormValues | SubsequentFormValues) => {
     console.log("[PasswordForm] Submitting form:", {
-      hasCurrentPassword: !!values.currentPassword,
+      hasCurrentPassword: !isFirstTimeLogin && 'currentPassword' in values,
       hasNewPassword: !!values.newPassword,
       hasConfirmPassword: !!values.confirmPassword,
       timestamp: new Date().toISOString()
