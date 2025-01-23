@@ -1,18 +1,19 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Member } from "@/types/member";
-import { Collector } from "@/types/collector"; // Add this import
+import { Collector } from "@/types/collector";
 import ProfileHeader from "./profile/ProfileHeader";
 import ProfileAvatar from "./profile/ProfileAvatar";
 import ContactInfo from "./profile/ContactInfo";
 import AddressDetails from "./profile/AddressDetails";
 import MembershipDetails from "./profile/MembershipDetails";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Key } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import EditProfileDialog from "./members/EditProfileDialog";
 import PaymentDialog from "./members/PaymentDialog";
 import AddFamilyMemberDialog from "./members/AddFamilyMemberDialog";
-import { useState } from "react";
+import ChangePasswordDialog from "./auth/ChangePasswordDialog";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ProfileActions from "./members/profile/ProfileActions";
@@ -28,7 +29,28 @@ const MemberProfileCard = ({ memberProfile }: MemberProfileCardProps) => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showAddFamilyDialog, setShowAddFamilyDialog] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [isFirstTimeLogin, setIsFirstTimeLogin] = useState(false);
+
+  useEffect(() => {
+    const checkPasswordReset = async () => {
+      if (!memberProfile?.member_number) return;
+      
+      const { data } = await supabase
+        .from('members')
+        .select('password_reset_required')
+        .eq('member_number', memberProfile.member_number)
+        .single();
+        
+      if (data?.password_reset_required) {
+        setIsFirstTimeLogin(true);
+        setShowPasswordDialog(true);
+      }
+    };
+
+    checkPasswordReset();
+  }, [memberProfile?.member_number]);
 
   const { data: collectorInfo } = useQuery({
     queryKey: ['collectorInfo', memberProfile?.collector],
@@ -124,11 +146,21 @@ const MemberProfileCard = ({ memberProfile }: MemberProfileCardProps) => {
                 <div className="space-y-4">
                   <ContactInfo memberProfile={memberProfile} />
                   <AddressDetails memberProfile={memberProfile} />
-                  <ProfileActions 
-                    userRole={userRole}
-                    onEditClick={() => setShowEditDialog(true)}
-                    onPaymentClick={() => setShowPaymentDialog(true)}
-                  />
+                  <div className="flex flex-wrap gap-2">
+                    <ProfileActions 
+                      userRole={userRole}
+                      onEditClick={() => setShowEditDialog(true)}
+                      collectorInfo={collectorInfo}
+                      memberNumber={memberProfile.member_number}
+                    />
+                    <Button
+                      onClick={() => setShowPasswordDialog(true)}
+                      className="bg-dashboard-accent2 hover:bg-dashboard-accent2/80 text-white"
+                    >
+                      <Key className="w-4 h-4 mr-2" />
+                      Change Password
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
@@ -175,6 +207,13 @@ const MemberProfileCard = ({ memberProfile }: MemberProfileCardProps) => {
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
         onProfileUpdated={handleProfileUpdated}
+      />
+
+      <ChangePasswordDialog
+        open={showPasswordDialog}
+        onOpenChange={setShowPasswordDialog}
+        memberNumber={memberProfile.member_number}
+        isFirstTimeLogin={isFirstTimeLogin}
       />
 
       {showPaymentDialog && (

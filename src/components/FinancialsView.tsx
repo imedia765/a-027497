@@ -3,6 +3,7 @@ import PaymentStatistics from './financials/PaymentStatistics';
 import CollectorsSummary from './financials/CollectorsSummary';
 import AllPaymentsTable from './financials/AllPaymentsTable';
 import { DashboardTabs, DashboardTabsList, DashboardTabsTrigger, DashboardTabsContent } from "@/components/ui/dashboard-tabs";
+import MemberStatsView from './members/MemberStatsView';
 
 const FinancialsView = () => {
   return (
@@ -13,11 +14,11 @@ const FinancialsView = () => {
       </header>
 
       <DashboardTabs defaultValue="overview" className="w-full">
-        <DashboardTabsList>
-          <DashboardTabsTrigger value="overview">Payment Overview</DashboardTabsTrigger>
-          <DashboardTabsTrigger value="collectors">Collectors Overview</DashboardTabsTrigger>
-          <DashboardTabsTrigger value="payments">All Payments</DashboardTabsTrigger>
-          <DashboardTabsTrigger value="stats">Member Stats</DashboardTabsTrigger>
+        <DashboardTabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-2 md:gap-0">
+          <DashboardTabsTrigger value="overview" className="w-full">Payment Overview</DashboardTabsTrigger>
+          <DashboardTabsTrigger value="collectors" className="w-full">Collectors Overview</DashboardTabsTrigger>
+          <DashboardTabsTrigger value="payments" className="w-full">All Payments</DashboardTabsTrigger>
+          <DashboardTabsTrigger value="stats" className="w-full">Member Stats</DashboardTabsTrigger>
         </DashboardTabsList>
 
         <DashboardTabsContent value="overview" className="mt-6">
@@ -33,12 +34,7 @@ const FinancialsView = () => {
         </DashboardTabsContent>
 
         <DashboardTabsContent value="stats" className="mt-6">
-          <Card className="bg-dashboard-card border-dashboard-accent1/20 p-6">
-            <h2 className="text-xl font-medium text-white mb-4">Member Payment Statistics</h2>
-            <div className="text-dashboard-text">
-              Member payment statistics and analytics will be displayed here.
-            </div>
-          </Card>
+          <MemberStatsView />
         </DashboardTabsContent>
       </DashboardTabs>
     </div>
