@@ -25,14 +25,6 @@ interface PasswordResetResponse {
   code?: string;
 }
 
-interface PasswordResetParams {
-  member_number: string;
-  new_password: string;
-  ip_address?: string;
-  user_agent?: string;
-  client_info?: string;
-}
-
 const ChangePasswordDialog = ({
   open,
   onOpenChange,
@@ -77,8 +69,16 @@ const ChangePasswordDialog = ({
       timestamp: new Date().toISOString()
     });
 
-    if (!values.newPassword || !values.confirmPassword || (!isFirstTimeLogin && !values.currentPassword)) {
-      const error = "Missing required password fields";
+    // Skip current password validation for first-time login
+    if (!isFirstTimeLogin && !values.currentPassword) {
+      const error = "Current password is required";
+      console.error("[PasswordChange] Validation error:", error);
+      toast.error(error);
+      return;
+    }
+
+    if (!values.newPassword || !values.confirmPassword) {
+      const error = "New password and confirmation are required";
       console.error("[PasswordChange] Validation error:", error);
       toast.error(error);
       return;
@@ -102,6 +102,7 @@ const ChangePasswordDialog = ({
       const { data, error } = await supabase.rpc('handle_password_reset', {
         member_number: memberNumber,
         new_password: values.newPassword,
+        current_password: isFirstTimeLogin ? undefined : values.currentPassword,
         ip_address: window.location.hostname,
         user_agent: navigator.userAgent,
         client_info: JSON.stringify({
@@ -140,10 +141,10 @@ const ChangePasswordDialog = ({
       console.log("[PasswordChange] Password changed successfully");
       toast.success("Password changed successfully");
       
-      if (!isFirstTimeLogin) {
-        onOpenChange(false);
-      } else {
+      if (isFirstTimeLogin) {
         window.location.reload();
+      } else {
+        onOpenChange(false);
       }
 
     } catch (error: any) {

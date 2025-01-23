@@ -13,8 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Lock } from "lucide-react";
 
-const formSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required"),
+// Create two separate schemas for first-time and subsequent password changes
+const firstTimeSchema = z.object({
   newPassword: z.string()
     .min(8, "Password must be at least 8 characters")
     .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
@@ -26,8 +26,12 @@ const formSchema = z.object({
   path: ["confirmPassword"],
 });
 
+const subsequentSchema = firstTimeSchema.extend({
+  currentPassword: z.string().min(1, "Current password is required"),
+});
+
 interface PasswordFormProps {
-  onSubmit: (values: z.infer<typeof formSchema>) => Promise<void>;
+  onSubmit: (values: any) => Promise<void>;
   isSubmitting: boolean;
   isFirstTimeLogin: boolean;
   onCancel: () => void;
@@ -39,6 +43,8 @@ export const PasswordForm = ({
   isFirstTimeLogin,
   onCancel,
 }: PasswordFormProps) => {
+  const formSchema = isFirstTimeLogin ? firstTimeSchema : subsequentSchema;
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
