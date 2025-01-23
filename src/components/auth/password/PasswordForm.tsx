@@ -33,8 +33,8 @@ const firstTimeSchema = z.object(basePasswordFields).refine((data) => data.newPa
 
 // Subsequent login schema
 const subsequentSchema = z.object({
-  ...basePasswordFields,
   currentPassword: z.string().min(1, "Current password is required"),
+  ...basePasswordFields,
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -61,10 +61,13 @@ export const PasswordForm = ({
   
   const form = useForm<FirstTimeFormValues | SubsequentFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    defaultValues: isFirstTimeLogin ? {
       newPassword: "",
       confirmPassword: "",
-      ...(isFirstTimeLogin ? {} : { currentPassword: "" }),
+    } : {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
     },
   });
 
@@ -79,14 +82,24 @@ export const PasswordForm = ({
   const handleFormSubmit = async (values: FirstTimeFormValues | SubsequentFormValues) => {
     try {
       console.log("[PasswordForm] Submitting form:", {
+        isFirstTimeLogin,
         hasCurrentPassword: !isFirstTimeLogin && 'currentPassword' in values,
-        hasNewPassword: !!values.newPassword,
-        hasConfirmPassword: !!values.confirmPassword,
+        values,
         timestamp: new Date().toISOString()
       });
 
       if (!isFirstTimeLogin && !('currentPassword' in values)) {
         toast.error("Current password is required");
+        return;
+      }
+
+      if (!values.newPassword || !values.confirmPassword) {
+        toast.error("New password and confirmation are required");
+        return;
+      }
+
+      if (values.newPassword !== values.confirmPassword) {
+        toast.error("Passwords do not match");
         return;
       }
       
