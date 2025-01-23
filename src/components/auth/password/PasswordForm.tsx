@@ -1,3 +1,4 @@
+import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -12,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Lock } from "lucide-react";
+import { toast } from "sonner";
 
 // Base password validation schema
 const basePasswordFields = {
@@ -75,14 +77,24 @@ export const PasswordForm = ({
   });
 
   const handleFormSubmit = async (values: FirstTimeFormValues | SubsequentFormValues) => {
-    console.log("[PasswordForm] Submitting form:", {
-      hasCurrentPassword: !isFirstTimeLogin && 'currentPassword' in values,
-      hasNewPassword: !!values.newPassword,
-      hasConfirmPassword: !!values.confirmPassword,
-      timestamp: new Date().toISOString()
-    });
-    
-    await onSubmit(values);
+    try {
+      console.log("[PasswordForm] Submitting form:", {
+        hasCurrentPassword: !isFirstTimeLogin && 'currentPassword' in values,
+        hasNewPassword: !!values.newPassword,
+        hasConfirmPassword: !!values.confirmPassword,
+        timestamp: new Date().toISOString()
+      });
+
+      if (!isFirstTimeLogin && !('currentPassword' in values)) {
+        toast.error("Current password is required");
+        return;
+      }
+      
+      await onSubmit(values);
+    } catch (error) {
+      console.error("[PasswordForm] Error submitting form:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to change password");
+    }
   };
 
   return (
