@@ -84,24 +84,54 @@ export const PasswordForm = ({
       });
 
       if (!values.currentPassword) {
-        toast.error("Current password is required");
+        toast.error("Current password is required", {
+          duration: 3000,
+          position: "top-center",
+        });
         return;
       }
 
       if (!values.newPassword || !values.confirmPassword) {
-        toast.error("New password and confirmation are required");
+        toast.error("New password and confirmation are required", {
+          duration: 3000,
+          position: "top-center",
+        });
         return;
       }
 
       if (values.newPassword !== values.confirmPassword) {
-        toast.error("Passwords do not match");
+        toast.error("Passwords do not match", {
+          duration: 3000,
+          position: "top-center",
+        });
         return;
       }
+
+      // Show loading toast
+      toast.loading("Changing password...", {
+        id: "password-change",
+      });
       
       await onSubmit(values);
+      
+      // Dismiss loading toast and show success
+      toast.dismiss("password-change");
+      toast.success("Password changed successfully!", {
+        duration: 3000,
+        position: "top-center",
+      });
+
+      // Reset form after successful submission
+      form.reset();
+      
     } catch (error) {
       console.error("[PasswordForm] Error submitting form:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to change password");
+      // Dismiss loading toast and show error
+      toast.dismiss("password-change");
+      toast.error(error instanceof Error ? error.message : "Failed to change password", {
+        duration: 3000,
+        position: "top-center",
+      });
     }
   };
 
