@@ -26,40 +26,6 @@ const basePasswordFields = {
   confirmPassword: z.string()
 };
 
-Let's add the `currentPassword` field to both the first-time login and password change forms. I'll modify the `PasswordForm` component to include this field in both scenarios.
-
-<lov-code>
-Let's update the PasswordForm component to include the currentPassword field:
-
-<lov-write file_path="src/components/auth/password/PasswordForm.tsx">
-import * as React from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Lock } from "lucide-react";
-import { toast } from "sonner";
-
-// Base password validation schema
-const basePasswordFields = {
-  currentPassword: z.string().min(1, "Current password is required"),
-  newPassword: z.string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-    .regex(/[0-9]/, "Password must contain at least one number"),
-  confirmPassword: z.string()
-};
-
 // First time login schema
 const firstTimeSchema = z.object(basePasswordFields).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords don't match",
